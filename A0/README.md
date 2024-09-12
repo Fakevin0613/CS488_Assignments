@@ -2,7 +2,7 @@
 
 ## To get started:
 ```
-premake5 gmake
+premake4 gmake
 make
 ./A0
 ```
