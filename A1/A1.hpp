@@ -41,6 +41,7 @@ private:
 	GLint V_uni; // Uniform location for View matrix.
 	GLint M_uni; // Uniform location for Model matrix.
 	GLint col_uni;   // Uniform location for cube colour.
+	float wall_height;
 
 	// Fields related to grid geometry.
 	GLuint m_grid_vao; // Vertex Array Object

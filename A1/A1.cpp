@@ -40,6 +40,9 @@ A1::~A1()
  */
 void A1::init()
 {
+	// init
+	wall_height = 2.0f;
+
 	// Initialize random number generator
 	int rseed=getpid();
 	srandom(rseed);
@@ -143,13 +146,13 @@ void A1::initCube() {
         // Front face
         0.0f, 0.0f, 1.0f,
         1.0f, 0.0f, 1.0f,
-        1.0f, 1.0f, 1.0f,
-        0.0f, 1.0f, 1.0f,
+        1.0f, wall_height, 1.0f,
+        0.0f, wall_height, 1.0f,
         // Back face
         0.0f, 0.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
-        1.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f
+        1.0f, wall_height, 0.0f,
+        0.0f, wall_height, 0.0f
     };
 
     unsigned int cube_indices[] = {
@@ -257,7 +260,7 @@ void A1::guiLogic()
 	float opacity(0.5f);
 
 	ImGui::Begin("Debug Window", &showDebugWindow, ImVec2(100,100), opacity, windowFlags);
-		if( ImGui::Button( "Quit Application" ) || glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS ) {
+		if( ImGui::Button( "Quit Application" ) ) {
 			glfwSetWindowShouldClose(m_window, GL_TRUE);
 		}
 
@@ -440,7 +443,22 @@ bool A1::keyInputEvent(int key, int action, int mods) {
 
 	// Fill in with event handling code...
 	if( action == GLFW_PRESS ) {
-		// Respond to some key events.
+		if (key == GLFW_KEY_Q) {
+			glfwSetWindowShouldClose(m_window, GL_TRUE);
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_SPACE) {
+			wall_height += 0.1f;
+			initCube();
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_BACKSPACE) {
+			if (wall_height > 0.0f) {
+				wall_height -= 0.1f;
+				initCube();
+				eventHandled = true;
+			}
+		}
 	}
 
 	return eventHandled;
