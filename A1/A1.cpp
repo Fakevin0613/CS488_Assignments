@@ -17,11 +17,12 @@ using namespace glm;
 using namespace std;
 
 static const size_t DIM = 16;
+static const float PI = 3.14159265f;
 
 //----------------------------------------------------------------------------------------
 // Constructor
 A1::A1()
-	: current_col( 0 )
+	: current_col( 0 ), maze(DIM)
 {
 	colour[0] = 0.0f;
 	colour[1] = 0.0f;
@@ -48,9 +49,8 @@ void A1::init()
 	
 
 	// DELETE FROM HERE...
-	Maze m(DIM);
-	m.digMaze();
-	m.printMaze();
+	maze.digMaze();
+	maze.printMaze();
 	// ...TO HERE
 	
 	// Set the background colour.
@@ -71,6 +71,8 @@ void A1::init()
 	col_uni = m_shader.getUniformLocation( "colour" );
 
 	initGrid();
+	initCube();
+	initFloor();
 
 	// Set up initial view and projection matrices (need to do this here,
 	// since it depends on the GLFW window being set up correctly).
@@ -136,6 +138,98 @@ void A1::initGrid()
 	CHECK_GL_ERRORS;
 }
 
+void A1::initCube() {
+    float cube_vertices[] = {
+        // Front face
+        0.0f, 0.0f, 1.0f,
+        1.0f, 0.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        0.0f, 1.0f, 1.0f,
+        // Back face
+        0.0f, 0.0f, 0.0f,
+        1.0f, 0.0f, 0.0f,
+        1.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 0.0f
+    };
+
+    unsigned int cube_indices[] = {
+        // Front face
+        0, 1, 2, 2, 3, 0,
+        // Back face
+        4, 5, 6, 6, 7, 4,
+        // Left face
+        4, 0, 3, 3, 7, 4,
+        // Right face
+        1, 5, 6, 6, 2, 1,
+        // Top face
+        3, 2, 6, 6, 7, 3,
+        // Bottom face
+        4, 5, 1, 1, 0, 4
+    };
+
+    glGenVertexArrays(1, &m_cube_vao);
+	glBindVertexArray(m_cube_vao);
+
+    glGenBuffers(1, &m_cube_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, m_cube_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &m_cube_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_cube_ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
+
+    // Specify the means of extracting the position values properly.
+	GLint posAttrib = m_shader.getAttribLocation( "position" );
+	glEnableVertexAttribArray( posAttrib );
+	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr );
+
+	// Reset state to prevent rogue code from messing with *my* 
+	// stuff!
+	glBindVertexArray( 0 );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+
+	CHECK_GL_ERRORS;
+}
+
+void A1::initFloor() {
+    float floor_vertices[] = {
+        0.0f, 0.0f, 1.0f,
+        1.0f, 0.0f, 1.0f,
+        0.0f, 0.0f, 0.0f,
+        1.0f, 0.0f, 0.0f,
+    };
+
+	unsigned int floor_indices[] = {
+        2, 3, 1,  // First triangle
+        1, 0, 2   // Second triangle
+    };
+
+    glGenVertexArrays(1, &m_floor_vao);
+	glBindVertexArray(m_floor_vao);
+
+    glGenBuffers(1, &m_floor_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, m_floor_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(floor_vertices), floor_vertices, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &m_floor_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_floor_ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(floor_indices), floor_indices, GL_STATIC_DRAW);
+
+    // Specify the means of extracting the position values properly.
+	GLint posAttrib = m_shader.getAttribLocation( "position" );
+	glEnableVertexAttribArray( posAttrib );
+	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr );
+
+	// Reset state to prevent rogue code from messing with *my* 
+	// stuff!
+	glBindVertexArray( 0 );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+
+	CHECK_GL_ERRORS;
+}
+
 //----------------------------------------------------------------------------------------
 /*
  * Called once per frame, before guiLogic().
@@ -163,7 +257,7 @@ void A1::guiLogic()
 	float opacity(0.5f);
 
 	ImGui::Begin("Debug Window", &showDebugWindow, ImVec2(100,100), opacity, windowFlags);
-		if( ImGui::Button( "Quit Application" ) ) {
+		if( ImGui::Button( "Quit Application" ) || glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS ) {
 			glfwSetWindowShouldClose(m_window, GL_TRUE);
 		}
 
@@ -225,8 +319,31 @@ void A1::draw()
 		glUniform3f( col_uni, 1, 1, 1 );
 		glDrawArrays( GL_LINES, 0, (3+DIM)*4 );
 
-		// Draw the cubes
-		// Highlight the active square.
+		// Draw the cubes and floors
+		mat4 origin = W;
+
+		for (int i = 0; i <= DIM + 1; i++) {
+			for (int j = 0; j <= DIM + 1; j++) {
+				W = glm::translate( W, vec3( i - 1, 0, j - 1) );
+				glUniformMatrix4fv( M_uni, 1, GL_FALSE, value_ptr( W ) );
+				
+				if (i == 0 || i == DIM + 1|| j == 0 || j == DIM + 1 || maze.getValue(i - 1, j - 1) == 0) {
+					// draw floors
+					glBindVertexArray( m_floor_vao );
+					glUniform3f( col_uni, 1, 0, 1 );
+					glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+				} 
+				else {
+					// draw cubes
+					glBindVertexArray( m_cube_vao );
+					glUniform3f( col_uni, 1, 1, 0 );
+					glDrawElements( GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+				}
+				W = origin;
+			}
+		}
+	// Highlight the active square.
 	m_shader.disable();
 
 	// Restore defaults

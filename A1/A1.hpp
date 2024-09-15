@@ -30,7 +30,10 @@ protected:
 	virtual bool keyInputEvent(int key, int action, int mods) override;
 
 private:
+	Maze maze;
 	void initGrid();
+	void initCube();
+	void initFloor();
 
 	// Fields related to the shader and uniforms.
 	ShaderProgram m_shader;
@@ -42,6 +45,16 @@ private:
 	// Fields related to grid geometry.
 	GLuint m_grid_vao; // Vertex Array Object
 	GLuint m_grid_vbo; // Vertex Buffer Object
+
+	// Fields related to Cube geometry.
+	GLuint m_cube_vao; // Vertex Array Object
+	GLuint m_cube_vbo; // Vertex Buffer Object
+	GLuint m_cube_ebo; // Element Buffer Object
+
+	// Fields related to Floor geometry.
+	GLuint m_floor_vao; // Vertex Array Object
+	GLuint m_floor_vbo; // Vertex Buffer Object
+	GLuint m_floor_ebo; // Element Buffer Object
 
 	// Matrices controlling the camera and projection.
 	glm::mat4 proj;
