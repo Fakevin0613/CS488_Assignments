@@ -70,6 +70,15 @@ private:
 	float colour[3];
 	int current_col;
 
+	// block, floor, avatar color
+	glm::vec3 blockColor;
+	glm::vec3 floorColor;
+	glm::vec3 avatarColor;
+
+// Enum to track the currently selected object
+enum SelectedObject { MAZE, FLOOR, AVATAR };
+SelectedObject currentSelection = MAZE;
+
 	// wall height
 	float wall_height;
 	// avatar pos

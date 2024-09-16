@@ -22,7 +22,7 @@ static const float PI = 3.14159265f;
 //----------------------------------------------------------------------------------------
 // Constructor
 A1::A1()
-	: current_col( 0 ), maze(DIM)
+	: current_col(0), maze(DIM)
 {
 	colour[0] = 0.0f;
 	colour[1] = 0.0f;
@@ -32,7 +32,8 @@ A1::A1()
 //----------------------------------------------------------------------------------------
 // Destructor
 A1::~A1()
-{}
+{
+}
 
 //----------------------------------------------------------------------------------------
 /*
@@ -41,36 +42,38 @@ A1::~A1()
 void A1::init()
 {
 	// Initialize random number generator
-	int rseed=getpid();
+	int rseed = getpid();
 	srandom(rseed);
 	// Print random number seed in case we want to rerun with
 	// same random numbers
 	cout << "Random number seed = " << rseed << endl;
-	
 
 	// DELETE FROM HERE...
 	maze.digMaze();
 	maze.printMaze();
 	// ...TO HERE
-	
+
 	// Set the background colour.
-	glClearColor( 0.3, 0.5, 0.7, 1.0 );
+	glClearColor(0.3, 0.5, 0.7, 1.0);
 
 	// Build the shader
 	m_shader.generateProgramObject();
 	m_shader.attachVertexShader(
-		getAssetFilePath( "VertexShader.vs" ).c_str() );
+		getAssetFilePath("VertexShader.vs").c_str());
 	m_shader.attachFragmentShader(
-		getAssetFilePath( "FragmentShader.fs" ).c_str() );
+		getAssetFilePath("FragmentShader.fs").c_str());
 	m_shader.link();
 
 	// Set up the uniforms
-	P_uni = m_shader.getUniformLocation( "P" );
-	V_uni = m_shader.getUniformLocation( "V" );
-	M_uni = m_shader.getUniformLocation( "M" );
-	col_uni = m_shader.getUniformLocation( "colour" );
+	P_uni = m_shader.getUniformLocation("P");
+	V_uni = m_shader.getUniformLocation("V");
+	M_uni = m_shader.getUniformLocation("M");
+	col_uni = m_shader.getUniformLocation("colour");
 
 	// init
+	blockColor = glm::vec3(1.0f, 0.0f, 0.0f);  // Red by default
+	floorColor = glm::vec3(0.0f, 1.0f, 0.0f);  // Green by default
+	avatarColor = glm::vec3(0.0f, 0.0f, 1.0f); // Blue by default
 	wall_height = 2.0f;
 	avatar_position = initPosition();
 	initGrid();
@@ -80,164 +83,177 @@ void A1::init()
 
 	// Set up initial view and projection matrices (need to do this here,
 	// since it depends on the GLFW window being set up correctly).
-	view = glm::lookAt( 
-		glm::vec3( 0.0f, 2.*float(DIM)*2.0*M_SQRT1_2, float(DIM)*2.0*M_SQRT1_2 ),
-		glm::vec3( 0.0f, 0.0f, 0.0f ),
-		glm::vec3( 0.0f, 1.0f, 0.0f ) );
+	view = glm::lookAt(
+		glm::vec3(0.0f, 2. * float(DIM) * 2.0 * M_SQRT1_2, float(DIM) * 2.0 * M_SQRT1_2),
+		glm::vec3(0.0f, 0.0f, 0.0f),
+		glm::vec3(0.0f, 1.0f, 0.0f));
 
-	proj = glm::perspective( 
-		glm::radians( 30.0f ),
-		float( m_framebufferWidth ) / float( m_framebufferHeight ),
-		1.0f, 1000.0f );
+	proj = glm::perspective(
+		glm::radians(30.0f),
+		float(m_framebufferWidth) / float(m_framebufferHeight),
+		1.0f, 1000.0f);
 }
 
 void A1::initGrid()
 {
-	size_t sz = 3 * 2 * 2 * (DIM+3);
+	size_t sz = 3 * 2 * 2 * (DIM + 3);
 
-	float *verts = new float[ sz ];
+	float *verts = new float[sz];
 	size_t ct = 0;
-	for( int idx = 0; idx < DIM+3; ++idx ) {
-		verts[ ct ] = -1;
-		verts[ ct+1 ] = 0;
-		verts[ ct+2 ] = idx-1;
-		verts[ ct+3 ] = DIM+1;
-		verts[ ct+4 ] = 0;
-		verts[ ct+5 ] = idx-1;
+	for (int idx = 0; idx < DIM + 3; ++idx)
+	{
+		verts[ct] = -1;
+		verts[ct + 1] = 0;
+		verts[ct + 2] = idx - 1;
+		verts[ct + 3] = DIM + 1;
+		verts[ct + 4] = 0;
+		verts[ct + 5] = idx - 1;
 		ct += 6;
 
-		verts[ ct ] = idx-1;
-		verts[ ct+1 ] = 0;
-		verts[ ct+2 ] = -1;
-		verts[ ct+3 ] = idx-1;
-		verts[ ct+4 ] = 0;
-		verts[ ct+5 ] = DIM+1;
+		verts[ct] = idx - 1;
+		verts[ct + 1] = 0;
+		verts[ct + 2] = -1;
+		verts[ct + 3] = idx - 1;
+		verts[ct + 4] = 0;
+		verts[ct + 5] = DIM + 1;
 		ct += 6;
 	}
 
 	// Create the vertex array to record buffer assignments.
-	glGenVertexArrays( 1, &m_grid_vao );
-	glBindVertexArray( m_grid_vao );
+	glGenVertexArrays(1, &m_grid_vao);
+	glBindVertexArray(m_grid_vao);
 
 	// Create the cube vertex buffer
-	glGenBuffers( 1, &m_grid_vbo );
-	glBindBuffer( GL_ARRAY_BUFFER, m_grid_vbo );
-	glBufferData( GL_ARRAY_BUFFER, sz*sizeof(float),
-		verts, GL_STATIC_DRAW );
+	glGenBuffers(1, &m_grid_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, m_grid_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sz * sizeof(float),
+				 verts, GL_STATIC_DRAW);
 
 	// Specify the means of extracting the position values properly.
-	GLint posAttrib = m_shader.getAttribLocation( "position" );
-	glEnableVertexAttribArray( posAttrib );
-	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr );
+	GLint posAttrib = m_shader.getAttribLocation("position");
+	glEnableVertexAttribArray(posAttrib);
+	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-	// Reset state to prevent rogue code from messing with *my* 
+	// Reset state to prevent rogue code from messing with *my*
 	// stuff!
-	glBindVertexArray( 0 );
-	glBindBuffer( GL_ARRAY_BUFFER, 0 );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	// OpenGL has the buffer now, there's no need for us to keep a copy.
-	delete [] verts;
+	delete[] verts;
 
 	CHECK_GL_ERRORS;
 }
 
-void A1::initCube() {
-    float cube_vertices[] = {
-        // Front
-        0.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 1.0f,
-        1.0f, wall_height, 1.0f,
-        0.0f, wall_height, 1.0f,
-        // Back
-        0.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        1.0f, wall_height, 0.0f,
-        0.0f, wall_height, 0.0f
-    };
+void A1::initCube()
+{
+	float cube_vertices[] = {
+		// Front
+		0.0f, 0.0f, 1.0f,
+		1.0f, 0.0f, 1.0f,
+		1.0f, wall_height, 1.0f,
+		0.0f, wall_height, 1.0f,
+		// Back
+		0.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,
+		1.0f, wall_height, 0.0f,
+		0.0f, wall_height, 0.0f};
 
-    int cube_indices[] = {
-        // Front
-        0, 1, 2, 2, 3, 0,
-        // Back
-        4, 5, 6, 6, 7, 4,
-        // Left
-        4, 0, 3, 3, 7, 4,
-        // Right
-        1, 5, 6, 6, 2, 1,
-        // Top
-        3, 2, 6, 6, 7, 3,
-        // Bottom
-        4, 5, 1, 1, 0, 4
-    };
+	int cube_indices[] = {
+		// Front
+		0, 1, 2, 2, 3, 0,
+		// Back
+		4, 5, 6, 6, 7, 4,
+		// Left
+		4, 0, 3, 3, 7, 4,
+		// Right
+		1, 5, 6, 6, 2, 1,
+		// Top
+		3, 2, 6, 6, 7, 3,
+		// Bottom
+		4, 5, 1, 1, 0, 4};
 
-    glGenVertexArrays(1, &m_cube_vao);
+	glGenVertexArrays(1, &m_cube_vao);
 	glBindVertexArray(m_cube_vao);
 
-    glGenBuffers(1, &m_cube_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, m_cube_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+	glGenBuffers(1, &m_cube_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, m_cube_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
 
 	glGenBuffers(1, &m_cube_ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_cube_ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_cube_ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
 
-    // Specify the means of extracting the position values properly.
-	GLint posAttrib = m_shader.getAttribLocation( "position" );
-	glEnableVertexAttribArray( posAttrib );
-	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr );
+	// Specify the means of extracting the position values properly.
+	GLint posAttrib = m_shader.getAttribLocation("position");
+	glEnableVertexAttribArray(posAttrib);
+	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-	// Reset state to prevent rogue code from messing with *my* 
+	// Reset state to prevent rogue code from messing with *my*
 	// stuff!
-	glBindVertexArray( 0 );
-	glBindBuffer( GL_ARRAY_BUFFER, 0 );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	CHECK_GL_ERRORS;
 }
 
-void A1::initFloor() {
-    float floor_vertices[] = {
-        0.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-    };
+void A1::initFloor()
+{
+	float floor_vertices[] = {
+		0.0f,
+		0.0f,
+		1.0f,
+		1.0f,
+		0.0f,
+		1.0f,
+		0.0f,
+		0.0f,
+		0.0f,
+		1.0f,
+		0.0f,
+		0.0f,
+	};
 
 	int floor_indices[] = {
-        2, 3, 1,  // First triangle
-        1, 0, 2   // Second triangle
-    };
+		2, 3, 1, // First triangle
+		1, 0, 2	 // Second triangle
+	};
 
-    glGenVertexArrays(1, &m_floor_vao);
+	glGenVertexArrays(1, &m_floor_vao);
 	glBindVertexArray(m_floor_vao);
 
-    glGenBuffers(1, &m_floor_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, m_floor_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(floor_vertices), floor_vertices, GL_STATIC_DRAW);
+	glGenBuffers(1, &m_floor_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, m_floor_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(floor_vertices), floor_vertices, GL_STATIC_DRAW);
 
 	glGenBuffers(1, &m_floor_ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_floor_ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(floor_indices), floor_indices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_floor_ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(floor_indices), floor_indices, GL_STATIC_DRAW);
 
-    // Specify the means of extracting the position values properly.
-	GLint posAttrib = m_shader.getAttribLocation( "position" );
-	glEnableVertexAttribArray( posAttrib );
-	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr );
+	// Specify the means of extracting the position values properly.
+	GLint posAttrib = m_shader.getAttribLocation("position");
+	glEnableVertexAttribArray(posAttrib);
+	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-	// Reset state to prevent rogue code from messing with *my* 
+	// Reset state to prevent rogue code from messing with *my*
 	// stuff!
-	glBindVertexArray( 0 );
-	glBindBuffer( GL_ARRAY_BUFFER, 0 );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	CHECK_GL_ERRORS;
 }
 
-glm::vec3 A1::initPosition() {
-	for (int i = 0; i < DIM; i++) {
-		for (int j = 0; j < DIM; j++) {
-			if ((i == DIM - 1 || i == 0 || j == DIM - 1 || j == 0) && maze.getValue(i,j) == 0) {
+glm::vec3 A1::initPosition()
+{
+	for (int i = 0; i < DIM; i++)
+	{
+		for (int j = 0; j < DIM; j++)
+		{
+			if ((i == DIM - 1 || i == 0 || j == DIM - 1 || j == 0) && maze.getValue(i, j) == 0)
+			{
 				return glm::vec3((float)i, 0.0f, (float)j);
 			}
 		}
@@ -245,86 +261,90 @@ glm::vec3 A1::initPosition() {
 	return glm::vec3(0.0f, 0.0f, 0.0f);
 }
 
-void A1::initAvatar() {
-    const int horizontal = 18;
-    const int vertical = 18;
-    const float r = 0.5f;
-    
-    int numVertices = (horizontal + 1) * (vertical + 1);
-    int numIndices = horizontal * vertical * 6;
+void A1::initAvatar()
+{
+	const int horizontal = 18;
+	const int vertical = 18;
+	const float r = 0.5f;
 
-    float* vertices = new float[numVertices * 3];
-    int* indices = new int[numIndices];
+	int numVertices = (horizontal + 1) * (vertical + 1);
+	int numIndices = horizontal * vertical * 6;
 
-    int index = 0;
-    for (int i = 0; i <= horizontal; i++) {
-        float angle = PI * (float(i) / horizontal) - PI / 2.0f;
-        float sinAngle = sin(angle);
-        float cosAngle = cos(angle);
+	float *vertices = new float[numVertices * 3];
+	int *indices = new int[numIndices];
 
-        for (int j = 0; j <= vertical; j++) {
-            float phi = 2.0f * PI * (float(j) / vertical);
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+	int index = 0;
+	for (int i = 0; i <= horizontal; i++)
+	{
+		float angle = PI * (float(i) / horizontal) - PI / 2.0f;
+		float sinAngle = sin(angle);
+		float cosAngle = cos(angle);
 
-            float x = r * cosAngle * cosPhi;
-            float y = r * sinAngle;
-            float z = r * cosAngle * sinPhi;
+		for (int j = 0; j <= vertical; j++)
+		{
+			float phi = 2.0f * PI * (float(j) / vertical);
+			float sinPhi = sin(phi);
+			float cosPhi = cos(phi);
 
-            vertices[index++] = x;
-            vertices[index++] = y;
-            vertices[index++] = z;
-        }
-    }
+			float x = r * cosAngle * cosPhi;
+			float y = r * sinAngle;
+			float z = r * cosAngle * sinPhi;
 
-    int indexIndex = 0;
-    for (int i = 0; i < horizontal; i++) {
-        for (int j = 0; j < vertical; j++) {
-            int first = i * (vertical + 1) + j;
-            int second = first + vertical + 1;
+			vertices[index++] = x;
+			vertices[index++] = y;
+			vertices[index++] = z;
+		}
+	}
 
-            // First triangle
-            indices[indexIndex++] = first;
-            indices[indexIndex++] = second;
-            indices[indexIndex++] = first + 1;
+	int indexIndex = 0;
+	for (int i = 0; i < horizontal; i++)
+	{
+		for (int j = 0; j < vertical; j++)
+		{
+			int first = i * (vertical + 1) + j;
+			int second = first + vertical + 1;
 
-            // Second triangle
-            indices[indexIndex++] = second;
-            indices[indexIndex++] = second + 1;
-            indices[indexIndex++] = first + 1;
-        }
-    }
+			// First triangle
+			indices[indexIndex++] = first;
+			indices[indexIndex++] = second;
+			indices[indexIndex++] = first + 1;
 
-    // Step 4: Create VAO, VBO, and EBO
-    glGenVertexArrays(1, &m_avatar_vao);
-    glBindVertexArray(m_avatar_vao);
+			// Second triangle
+			indices[indexIndex++] = second;
+			indices[indexIndex++] = second + 1;
+			indices[indexIndex++] = first + 1;
+		}
+	}
 
-    // Create and bind VBO for vertex data
-    glGenBuffers(1, &m_avatar_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, m_avatar_vbo);
-    glBufferData(GL_ARRAY_BUFFER, numVertices * 3 * sizeof(float), vertices, GL_STATIC_DRAW);
+	// Step 4: Create VAO, VBO, and EBO
+	glGenVertexArrays(1, &m_avatar_vao);
+	glBindVertexArray(m_avatar_vao);
 
-    // Create and bind EBO for index data
-    glGenBuffers(1, &m_avatar_ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_avatar_ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, numIndices * sizeof(int), indices, GL_STATIC_DRAW);
+	// Create and bind VBO for vertex data
+	glGenBuffers(1, &m_avatar_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, m_avatar_vbo);
+	glBufferData(GL_ARRAY_BUFFER, numVertices * 3 * sizeof(float), vertices, GL_STATIC_DRAW);
 
-    // Specify the means of extracting the position values properly.
-	GLint posAttrib = m_shader.getAttribLocation( "position" );
-	glEnableVertexAttribArray( posAttrib );
-	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr );
+	// Create and bind EBO for index data
+	glGenBuffers(1, &m_avatar_ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_avatar_ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, numIndices * sizeof(int), indices, GL_STATIC_DRAW);
 
-	// Reset state to prevent rogue code from messing with *my* 
+	// Specify the means of extracting the position values properly.
+	GLint posAttrib = m_shader.getAttribLocation("position");
+	glEnableVertexAttribArray(posAttrib);
+	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	// Reset state to prevent rogue code from messing with *my*
 	// stuff!
-	glBindVertexArray( 0 );
-	glBindBuffer( GL_ARRAY_BUFFER, 0 );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
-    delete[] vertices;
-    delete[] indices;
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	delete[] vertices;
+	delete[] indices;
 
-    CHECK_GL_ERRORS;
+	CHECK_GL_ERRORS;
 }
-
 
 //----------------------------------------------------------------------------------------
 /*
@@ -341,7 +361,7 @@ void A1::appLogic()
  */
 void A1::guiLogic()
 {
-	// We already know there's only going to be one window, so for 
+	// We already know there's only going to be one window, so for
 	// simplicity we'll store button states in static local variables.
 	// If there was ever a possibility of having multiple instances of
 	// A1 running simultaneously, this would break; you'd want to make
@@ -352,44 +372,75 @@ void A1::guiLogic()
 	ImGuiWindowFlags windowFlags(ImGuiWindowFlags_AlwaysAutoResize);
 	float opacity(0.5f);
 
-	ImGui::Begin("Debug Window", &showDebugWindow, ImVec2(100,100), opacity, windowFlags);
-		if( ImGui::Button( "Quit Application" ) ) {
-			glfwSetWindowShouldClose(m_window, GL_TRUE);
-		}
+	ImGui::Begin("Debug Window", &showDebugWindow, ImVec2(100, 100), opacity, windowFlags);
+	if (ImGui::Button("Quit Application"))
+	{
+		glfwSetWindowShouldClose(m_window, GL_TRUE);
+	}
 
-		// Eventually you'll create multiple colour widgets with
-		// radio buttons.  If you use PushID/PopID to give them all
-		// unique IDs, then ImGui will be able to keep them separate.
-		// This is unnecessary with a single colour selector and
-		// radio button, but I'm leaving it in as an example.
+	// Eventually you'll create multiple colour widgets with
+	// radio buttons.  If you use PushID/PopID to give them all
+	// unique IDs, then ImGui will be able to keep them separate.
+	// This is unnecessary with a single colour selector and
+	// radio button, but I'm leaving it in as an example.
 
-		// Prefixing a widget name with "##" keeps it from being
-		// displayed.
+	// Prefixing a widget name with "##" keeps it from being
+	// displayed.
 
-		ImGui::PushID( 0 );
-		ImGui::ColorEdit3( "##Colour", colour );
-		ImGui::SameLine();
-		if( ImGui::RadioButton( "##Col", &current_col, 0 ) ) {
-			// Select this colour.
-		}
-		ImGui::PopID();
+	enum SelectedObject
+	{
+		BLOCK,
+		FLOOR,
+		AVATAR
+	};
+	ImGui::PushID("Color Editor");
+	static SelectedObject currentSelection = BLOCK;
+	ImGui::RadioButton("Maze Block Color", (int*)&currentSelection, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton("Floor Color", (int*)&currentSelection, 1);
+    ImGui::SameLine();
+    ImGui::RadioButton("Avatar Color", (int*)&currentSelection, 2);
+	ImGui::PopID();
+	
+	if (currentSelection == BLOCK)
+	{
+		ImGui::ColorEdit3("Edit Color", glm::value_ptr(blockColor));
+	}
+	else if (currentSelection == FLOOR)
+	{
+		ImGui::ColorEdit3("Edit Color", glm::value_ptr(floorColor));
+	}
+	else if (currentSelection == AVATAR)
+	{
+		ImGui::ColorEdit3("Edit Color", glm::value_ptr(avatarColor));
+	}
+	
 
-/*
-		// For convenience, you can uncomment this to show ImGui's massive
-		// demonstration window right in your application.  Very handy for
-		// browsing around to get the widget you want.  Then look in 
-		// shared/imgui/imgui_demo.cpp to see how it's done.
-		if( ImGui::Button( "Test Window" ) ) {
-			showTestWindow = !showTestWindow;
-		}
-*/
+	// ImGui::PushID( 0 );
+	// ImGui::ColorEdit3( "##Colour", colour );
+	// ImGui::SameLine();
+	// if( ImGui::RadioButton( "##Col", &current_col, 0 ) ) {
+	// 	// Select this colour.
+	// }
+	// ImGui::PopID();
 
-		ImGui::Text( "Framerate: %.1f FPS", ImGui::GetIO().Framerate );
+	/*
+			// For convenience, you can uncomment this to show ImGui's massive
+			// demonstration window right in your application.  Very handy for
+			// browsing around to get the widget you want.  Then look in
+			// shared/imgui/imgui_demo.cpp to see how it's done.
+			if( ImGui::Button( "Test Window" ) ) {
+				showTestWindow = !showTestWindow;
+			}
+	*/
+
+	ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
 
 	ImGui::End();
 
-	if( showTestWindow ) {
-		ImGui::ShowTestWindow( &showTestWindow );
+	if (showTestWindow)
+	{
+		ImGui::ShowTestWindow(&showTestWindow);
 	}
 }
 
@@ -401,62 +452,65 @@ void A1::draw()
 {
 	// Create a global transformation for the model (centre it).
 	mat4 W;
-	W = glm::translate( W, glm::vec3( -float(DIM)/2.0f, 0, -float(DIM)/2.0f ) );
+	W = glm::translate(W, glm::vec3(-float(DIM) / 2.0f, 0, -float(DIM) / 2.0f));
 
 	m_shader.enable();
-		glEnable( GL_DEPTH_TEST );
+	glEnable(GL_DEPTH_TEST);
 
-		glUniformMatrix4fv( P_uni, 1, GL_FALSE, value_ptr( proj ) );
-		glUniformMatrix4fv( V_uni, 1, GL_FALSE, value_ptr( view ) );
-		glUniformMatrix4fv( M_uni, 1, GL_FALSE, value_ptr( W ) );
+	glUniformMatrix4fv(P_uni, 1, GL_FALSE, value_ptr(proj));
+	glUniformMatrix4fv(V_uni, 1, GL_FALSE, value_ptr(view));
+	glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(W));
 
-		// Just draw the grid for now.
-		glBindVertexArray( m_grid_vao );
-		glUniform3f( col_uni, 1, 1, 1 );
-		glDrawArrays( GL_LINES, 0, (3+DIM)*4 );
+	// Just draw the grid for now.
+	glBindVertexArray(m_grid_vao);
+	glUniform3f(col_uni, 1, 1, 1);
+	glDrawArrays(GL_LINES, 0, (3 + DIM) * 4);
 
-		// draw Avatar
-		mat4 originalW = W;
-		W = glm::translate( W, avatar_position + 0.5f );
-		glUniformMatrix4fv( P_uni, 1, GL_FALSE, value_ptr( proj ) );
-		glUniformMatrix4fv( V_uni, 1, GL_FALSE, value_ptr( view ) );
-		glUniformMatrix4fv( M_uni, 1, GL_FALSE, value_ptr( W ) );
+	// draw Avatar
+	mat4 originalW = W;
+	W = glm::translate(W, avatar_position + 0.5f);
+	glUniformMatrix4fv(P_uni, 1, GL_FALSE, value_ptr(proj));
+	glUniformMatrix4fv(V_uni, 1, GL_FALSE, value_ptr(view));
+	glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(W));
 
-    	glBindVertexArray(m_avatar_vao);
-    	glUniform3f(col_uni, 1.0f, 0.0f, 0.0f);
-		glDrawElements( GL_TRIANGLES, 18 * 18 * 2 * 3, GL_UNSIGNED_INT, 0);
-		W = originalW;
+	glBindVertexArray(m_avatar_vao);
+	glUniform3f(col_uni, avatarColor.r, avatarColor.g, avatarColor.b);
+	glDrawElements(GL_TRIANGLES, 18 * 18 * 2 * 3, GL_UNSIGNED_INT, 0);
+	W = originalW;
 
-		// Draw the cubes and floors
-		for (int i = 0; i <= DIM + 1; i++) {
-			for (int j = 0; j <= DIM + 1; j++) {
-				W = glm::translate( W, glm::vec3( i - 1, 0, j - 1) );
-				glUniformMatrix4fv( P_uni, 1, GL_FALSE, value_ptr( proj ) );
-				glUniformMatrix4fv( V_uni, 1, GL_FALSE, value_ptr( view ) );
-				glUniformMatrix4fv( M_uni, 1, GL_FALSE, value_ptr( W ) );
-				
-				if (i == 0 || i == DIM + 1|| j == 0 || j == DIM + 1 || maze.getValue(i - 1, j - 1) == 0) {
-					// draw floors
-					glBindVertexArray( m_floor_vao );
-					glUniform3f( col_uni, 1, 0, 1 );
-					glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	// Draw the cubes and floors
+	for (int i = 0; i <= DIM + 1; i++)
+	{
+		for (int j = 0; j <= DIM + 1; j++)
+		{
+			W = glm::translate(W, glm::vec3(i - 1, 0, j - 1));
+			glUniformMatrix4fv(P_uni, 1, GL_FALSE, value_ptr(proj));
+			glUniformMatrix4fv(V_uni, 1, GL_FALSE, value_ptr(view));
+			glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(W));
 
-				} 
-				else {
-					// draw cubes
-					glBindVertexArray( m_cube_vao );
-					glUniform3f( col_uni, 1, 1, 0 );
-					glDrawElements( GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-				}
-				W = originalW;
+			if (i == 0 || i == DIM + 1 || j == 0 || j == DIM + 1 || maze.getValue(i - 1, j - 1) == 0)
+			{
+				// draw floors
+				glBindVertexArray(m_floor_vao);
+				glUniform3f(col_uni, floorColor.r, floorColor.g, floorColor.b);
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 			}
+			else
+			{
+				// draw cubes
+				glBindVertexArray(m_cube_vao);
+				glUniform3f(col_uni, blockColor.r, blockColor.g, blockColor.b);
+				glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+			}
+			W = originalW;
 		}
+	}
 
 	// Highlight the active square.
 	m_shader.disable();
 
 	// Restore defaults
-	glBindVertexArray( 0 );
+	glBindVertexArray(0);
 
 	CHECK_GL_ERRORS;
 }
@@ -466,15 +520,16 @@ void A1::draw()
  * Called once, after program is signaled to terminate.
  */
 void A1::cleanup()
-{}
+{
+}
 
 //----------------------------------------------------------------------------------------
 /*
  * Event handler.  Handles cursor entering the window area events.
  */
-bool A1::cursorEnterWindowEvent (
-		int entered
-) {
+bool A1::cursorEnterWindowEvent(
+	int entered)
+{
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
@@ -486,15 +541,16 @@ bool A1::cursorEnterWindowEvent (
 /*
  * Event handler.  Handles mouse cursor movement events.
  */
-bool A1::mouseMoveEvent(double xPos, double yPos) 
+bool A1::mouseMoveEvent(double xPos, double yPos)
 {
 	bool eventHandled(false);
 
-	if (!ImGui::IsMouseHoveringAnyWindow()) {
+	if (!ImGui::IsMouseHoveringAnyWindow())
+	{
 		// Put some code here to handle rotations.  Probably need to
 		// check whether we're *dragging*, not just moving the mouse.
 		// Probably need some instance variables to track the current
-		// rotation amount, and maybe the previous X position (so 
+		// rotation amount, and maybe the previous X position (so
 		// that you can rotate relative to the *change* in X.
 	}
 
@@ -505,10 +561,12 @@ bool A1::mouseMoveEvent(double xPos, double yPos)
 /*
  * Event handler.  Handles mouse button events.
  */
-bool A1::mouseButtonInputEvent(int button, int actions, int mods) {
+bool A1::mouseButtonInputEvent(int button, int actions, int mods)
+{
 	bool eventHandled(false);
 
-	if (!ImGui::IsMouseHoveringAnyWindow()) {
+	if (!ImGui::IsMouseHoveringAnyWindow())
+	{
 		// The user clicked in the window.  If it's the left
 		// mouse button, initiate a rotation.
 	}
@@ -520,7 +578,8 @@ bool A1::mouseButtonInputEvent(int button, int actions, int mods) {
 /*
  * Event handler.  Handles mouse scroll wheel events.
  */
-bool A1::mouseScrollEvent(double xOffSet, double yOffSet) {
+bool A1::mouseScrollEvent(double xOffSet, double yOffSet)
+{
 	bool eventHandled(false);
 
 	// Zoom in or out.
@@ -532,7 +591,8 @@ bool A1::mouseScrollEvent(double xOffSet, double yOffSet) {
 /*
  * Event handler.  Handles window resize events.
  */
-bool A1::windowResizeEvent(int width, int height) {
+bool A1::windowResizeEvent(int width, int height)
+{
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
@@ -544,70 +604,88 @@ bool A1::windowResizeEvent(int width, int height) {
 /*
  * Event handler.  Handles key input events.
  */
-bool A1::keyInputEvent(int key, int action, int mods) {
+bool A1::keyInputEvent(int key, int action, int mods)
+{
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
-	if( action == GLFW_PRESS ) {
-		if (key == GLFW_KEY_Q) {
+	if (action == GLFW_PRESS)
+	{
+		if (key == GLFW_KEY_Q)
+		{
 			glfwSetWindowShouldClose(m_window, GL_TRUE);
 			eventHandled = true;
 		}
-		if (key == GLFW_KEY_SPACE) {
+		if (key == GLFW_KEY_SPACE)
+		{
 			wall_height += 0.1f;
 			initCube();
 			eventHandled = true;
 		}
-		if (key == GLFW_KEY_BACKSPACE) {
-			if (wall_height > 0.0f) {
+		if (key == GLFW_KEY_BACKSPACE)
+		{
+			if (wall_height > 0.0f)
+			{
 				wall_height -= 0.1f;
 				initCube();
 				eventHandled = true;
 			}
 		}
-		if (key == GLFW_KEY_UP){
-			if (avatar_position.z - 1 >= 0 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)) {
+		if (key == GLFW_KEY_UP)
+		{
+			if (avatar_position.z - 1 >= 0 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS))
+			{
 				maze.setValue(avatar_position.x, avatar_position.z - 1, 0);
 				avatar_position.z -= 1;
 				eventHandled = true;
 			}
-			else if (maze.getValue(avatar_position.x, avatar_position.z - 1) == 0 && avatar_position.z - 1 >= 0){
+			else if (maze.getValue(avatar_position.x, avatar_position.z - 1) == 0 && avatar_position.z - 1 >= 0)
+			{
 				avatar_position.z -= 1;
 				eventHandled = true;
 			}
 		}
-		if (key == GLFW_KEY_DOWN){
-			if (avatar_position.z + 1 <= DIM - 1 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)) {
+		if (key == GLFW_KEY_DOWN)
+		{
+			if (avatar_position.z + 1 <= DIM - 1 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS))
+			{
 				maze.setValue(avatar_position.x, avatar_position.z + 1, 0);
 				avatar_position.z += 1;
 				eventHandled = true;
 			}
-			else if (maze.getValue(avatar_position.x, avatar_position.z + 1) == 0 && avatar_position.z + 1 <= DIM - 1){
+			else if (maze.getValue(avatar_position.x, avatar_position.z + 1) == 0 && avatar_position.z + 1 <= DIM - 1)
+			{
 				avatar_position.z += 1;
 				eventHandled = true;
 			}
 		}
-		if (key == GLFW_KEY_LEFT){
-			if (avatar_position.x - 1 >= 0 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)) {
+		if (key == GLFW_KEY_LEFT)
+		{
+			if (avatar_position.x - 1 >= 0 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS))
+			{
 				maze.setValue(avatar_position.x - 1, avatar_position.z, 0);
 				avatar_position.x -= 1;
 				eventHandled = true;
 			}
-			else if (maze.getValue(avatar_position.x - 1, avatar_position.z) == 0 && avatar_position.x - 1 >= 0){
+			else if (maze.getValue(avatar_position.x - 1, avatar_position.z) == 0 && avatar_position.x - 1 >= 0)
+			{
 				avatar_position.x -= 1;
 				eventHandled = true;
 			}
 		}
-		if (key == GLFW_KEY_RIGHT){
-			if (avatar_position.x + 1 <= DIM - 1 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)) {
+		if (key == GLFW_KEY_RIGHT)
+		{
+			if (avatar_position.x + 1 <= DIM - 1 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS))
+			{
 				maze.setValue(avatar_position.x + 1, avatar_position.z, 0);
 				avatar_position.x += 1;
 				eventHandled = true;
 			}
-			else if (maze.getValue(avatar_position.x + 1, avatar_position.z) == 0 && avatar_position.x + 1 <= DIM - 1){
+			else if (maze.getValue(avatar_position.x + 1, avatar_position.z) == 0 && avatar_position.x + 1 <= DIM - 1)
+			{
 				avatar_position.x += 1;
 				eventHandled = true;
-			}	
+			}
 		}
 	}
 
