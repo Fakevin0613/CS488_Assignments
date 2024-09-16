@@ -40,9 +40,6 @@ A1::~A1()
  */
 void A1::init()
 {
-	// init
-	wall_height = 2.0f;
-
 	// Initialize random number generator
 	int rseed=getpid();
 	srandom(rseed);
@@ -73,9 +70,13 @@ void A1::init()
 	M_uni = m_shader.getUniformLocation( "M" );
 	col_uni = m_shader.getUniformLocation( "colour" );
 
+	// init
+	wall_height = 2.0f;
+	avatar_position = initPosition();
 	initGrid();
 	initCube();
 	initFloor();
+	initAvatar();
 
 	// Set up initial view and projection matrices (need to do this here,
 	// since it depends on the GLFW window being set up correctly).
@@ -143,30 +144,30 @@ void A1::initGrid()
 
 void A1::initCube() {
     float cube_vertices[] = {
-        // Front face
+        // Front
         0.0f, 0.0f, 1.0f,
         1.0f, 0.0f, 1.0f,
         1.0f, wall_height, 1.0f,
         0.0f, wall_height, 1.0f,
-        // Back face
+        // Back
         0.0f, 0.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
         1.0f, wall_height, 0.0f,
         0.0f, wall_height, 0.0f
     };
 
-    unsigned int cube_indices[] = {
-        // Front face
+    int cube_indices[] = {
+        // Front
         0, 1, 2, 2, 3, 0,
-        // Back face
+        // Back
         4, 5, 6, 6, 7, 4,
-        // Left face
+        // Left
         4, 0, 3, 3, 7, 4,
-        // Right face
+        // Right
         1, 5, 6, 6, 2, 1,
-        // Top face
+        // Top
         3, 2, 6, 6, 7, 3,
-        // Bottom face
+        // Bottom
         4, 5, 1, 1, 0, 4
     };
 
@@ -203,7 +204,7 @@ void A1::initFloor() {
         1.0f, 0.0f, 0.0f,
     };
 
-	unsigned int floor_indices[] = {
+	int floor_indices[] = {
         2, 3, 1,  // First triangle
         1, 0, 2   // Second triangle
     };
@@ -232,6 +233,98 @@ void A1::initFloor() {
 
 	CHECK_GL_ERRORS;
 }
+
+glm::vec3 A1::initPosition() {
+	for (int i = 0; i < DIM; i++) {
+		for (int j = 0; j < DIM; j++) {
+			if ((i == DIM - 1 || i == 0 || j == DIM - 1 || j == 0) && maze.getValue(i,j) == 0) {
+				return glm::vec3((float)i, 0.0f, (float)j);
+			}
+		}
+	}
+	return glm::vec3(0.0f, 0.0f, 0.0f);
+}
+
+void A1::initAvatar() {
+    const int horizontal = 18;
+    const int vertical = 18;
+    const float r = 0.5f;
+    
+    int numVertices = (horizontal + 1) * (vertical + 1);
+    int numIndices = horizontal * vertical * 6;
+
+    float* vertices = new float[numVertices * 3];
+    int* indices = new int[numIndices];
+
+    int index = 0;
+    for (int i = 0; i <= horizontal; i++) {
+        float angle = PI * (float(i) / horizontal) - PI / 2.0f;
+        float sinAngle = sin(angle);
+        float cosAngle = cos(angle);
+
+        for (int j = 0; j <= vertical; j++) {
+            float phi = 2.0f * PI * (float(j) / vertical);
+            float sinPhi = sin(phi);
+            float cosPhi = cos(phi);
+
+            float x = r * cosAngle * cosPhi;
+            float y = r * sinAngle;
+            float z = r * cosAngle * sinPhi;
+
+            vertices[index++] = x;
+            vertices[index++] = y;
+            vertices[index++] = z;
+        }
+    }
+
+    int indexIndex = 0;
+    for (int i = 0; i < horizontal; i++) {
+        for (int j = 0; j < vertical; j++) {
+            int first = i * (vertical + 1) + j;
+            int second = first + vertical + 1;
+
+            // First triangle
+            indices[indexIndex++] = first;
+            indices[indexIndex++] = second;
+            indices[indexIndex++] = first + 1;
+
+            // Second triangle
+            indices[indexIndex++] = second;
+            indices[indexIndex++] = second + 1;
+            indices[indexIndex++] = first + 1;
+        }
+    }
+
+    // Step 4: Create VAO, VBO, and EBO
+    glGenVertexArrays(1, &m_avatar_vao);
+    glBindVertexArray(m_avatar_vao);
+
+    // Create and bind VBO for vertex data
+    glGenBuffers(1, &m_avatar_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, m_avatar_vbo);
+    glBufferData(GL_ARRAY_BUFFER, numVertices * 3 * sizeof(float), vertices, GL_STATIC_DRAW);
+
+    // Create and bind EBO for index data
+    glGenBuffers(1, &m_avatar_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_avatar_ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, numIndices * sizeof(int), indices, GL_STATIC_DRAW);
+
+    // Specify the means of extracting the position values properly.
+	GLint posAttrib = m_shader.getAttribLocation( "position" );
+	glEnableVertexAttribArray( posAttrib );
+	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr );
+
+	// Reset state to prevent rogue code from messing with *my* 
+	// stuff!
+	glBindVertexArray( 0 );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+    delete[] vertices;
+    delete[] indices;
+
+    CHECK_GL_ERRORS;
+}
+
 
 //----------------------------------------------------------------------------------------
 /*
@@ -308,7 +401,7 @@ void A1::draw()
 {
 	// Create a global transformation for the model (centre it).
 	mat4 W;
-	W = glm::translate( W, vec3( -float(DIM)/2.0f, 0, -float(DIM)/2.0f ) );
+	W = glm::translate( W, glm::vec3( -float(DIM)/2.0f, 0, -float(DIM)/2.0f ) );
 
 	m_shader.enable();
 		glEnable( GL_DEPTH_TEST );
@@ -322,12 +415,24 @@ void A1::draw()
 		glUniform3f( col_uni, 1, 1, 1 );
 		glDrawArrays( GL_LINES, 0, (3+DIM)*4 );
 
-		// Draw the cubes and floors
-		mat4 origin = W;
+		// draw Avatar
+		mat4 originalW = W;
+		W = glm::translate( W, avatar_position + 0.5f );
+		glUniformMatrix4fv( P_uni, 1, GL_FALSE, value_ptr( proj ) );
+		glUniformMatrix4fv( V_uni, 1, GL_FALSE, value_ptr( view ) );
+		glUniformMatrix4fv( M_uni, 1, GL_FALSE, value_ptr( W ) );
 
+    	glBindVertexArray(m_avatar_vao);
+    	glUniform3f(col_uni, 1.0f, 0.0f, 0.0f);
+		glDrawElements( GL_TRIANGLES, 18 * 18 * 2 * 3, GL_UNSIGNED_INT, 0);
+		W = originalW;
+
+		// Draw the cubes and floors
 		for (int i = 0; i <= DIM + 1; i++) {
 			for (int j = 0; j <= DIM + 1; j++) {
-				W = glm::translate( W, vec3( i - 1, 0, j - 1) );
+				W = glm::translate( W, glm::vec3( i - 1, 0, j - 1) );
+				glUniformMatrix4fv( P_uni, 1, GL_FALSE, value_ptr( proj ) );
+				glUniformMatrix4fv( V_uni, 1, GL_FALSE, value_ptr( view ) );
 				glUniformMatrix4fv( M_uni, 1, GL_FALSE, value_ptr( W ) );
 				
 				if (i == 0 || i == DIM + 1|| j == 0 || j == DIM + 1 || maze.getValue(i - 1, j - 1) == 0) {
@@ -343,9 +448,10 @@ void A1::draw()
 					glUniform3f( col_uni, 1, 1, 0 );
 					glDrawElements( GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 				}
-				W = origin;
+				W = originalW;
 			}
 		}
+
 	// Highlight the active square.
 	m_shader.disable();
 

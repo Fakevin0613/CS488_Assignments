@@ -34,6 +34,8 @@ private:
 	void initGrid();
 	void initCube();
 	void initFloor();
+	glm::vec3 initPosition();
+	void initAvatar();
 
 	// Fields related to the shader and uniforms.
 	ShaderProgram m_shader;
@@ -41,7 +43,6 @@ private:
 	GLint V_uni; // Uniform location for View matrix.
 	GLint M_uni; // Uniform location for Model matrix.
 	GLint col_uni;   // Uniform location for cube colour.
-	float wall_height;
 
 	// Fields related to grid geometry.
 	GLuint m_grid_vao; // Vertex Array Object
@@ -57,10 +58,20 @@ private:
 	GLuint m_floor_vbo; // Vertex Buffer Object
 	GLuint m_floor_ebo; // Element Buffer Object
 
+	// Fields related to Avatar geometry.
+	GLuint m_avatar_vao; // Vertex Array Object
+	GLuint m_avatar_vbo; // Vertex Buffer Object
+	GLuint m_avatar_ebo; // Element Buffer Object
+
 	// Matrices controlling the camera and projection.
 	glm::mat4 proj;
 	glm::mat4 view;
 
 	float colour[3];
 	int current_col;
+
+	// wall height
+	float wall_height;
+	// avatar pos
+	glm::vec3 avatar_position;
 };
