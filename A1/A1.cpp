@@ -565,6 +565,30 @@ bool A1::keyInputEvent(int key, int action, int mods) {
 				eventHandled = true;
 			}
 		}
+		if (key == GLFW_KEY_UP){
+			if (maze.getValue(avatar_position.x, avatar_position.z - 1) == 0 && avatar_position.z - 1 >= 0){
+				avatar_position.z -= 1; 
+			}
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_DOWN){
+			if (maze.getValue(avatar_position.x, avatar_position.z + 1) == 0 && avatar_position.z + 1 <= DIM){
+				avatar_position.z += 1; 
+			}
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_LEFT){
+			if (maze.getValue(avatar_position.x - 1, avatar_position.z) == 0 && avatar_position.x - 1 >= 0){
+				avatar_position.x -= 1; 
+			}
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_RIGHT){
+			if (maze.getValue(avatar_position.x + 1, avatar_position.z) == 0 && avatar_position.z - 1 <= DIM){
+				avatar_position.x += 1; 
+			}
+			eventHandled = true;
+		}
 	}
 
 	return eventHandled;
