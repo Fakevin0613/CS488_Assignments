@@ -566,28 +566,48 @@ bool A1::keyInputEvent(int key, int action, int mods) {
 			}
 		}
 		if (key == GLFW_KEY_UP){
-			if (maze.getValue(avatar_position.x, avatar_position.z - 1) == 0 && avatar_position.z - 1 >= 0){
-				avatar_position.z -= 1; 
+			if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS){
+				maze.setValue(avatar_position.x, avatar_position.z - 1, 0);
+				avatar_position.z -= 1;
+				eventHandled = true;
 			}
-			eventHandled = true;
+			else if (maze.getValue(avatar_position.x, avatar_position.z - 1) == 0 && avatar_position.z - 1 >= 0){
+				avatar_position.z -= 1;
+				eventHandled = true;
+			}
 		}
 		if (key == GLFW_KEY_DOWN){
-			if (maze.getValue(avatar_position.x, avatar_position.z + 1) == 0 && avatar_position.z + 1 <= DIM){
-				avatar_position.z += 1; 
+			if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS){
+				maze.setValue(avatar_position.x, avatar_position.z + 1, 0);
+				avatar_position.z += 1;
+				eventHandled = true;
 			}
-			eventHandled = true;
+			else if (maze.getValue(avatar_position.x, avatar_position.z + 1) == 0 && avatar_position.z + 1 <= DIM){
+				avatar_position.z += 1;
+				eventHandled = true;
+			}
 		}
 		if (key == GLFW_KEY_LEFT){
-			if (maze.getValue(avatar_position.x - 1, avatar_position.z) == 0 && avatar_position.x - 1 >= 0){
-				avatar_position.x -= 1; 
+			if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS){
+				maze.setValue(avatar_position.x - 1, avatar_position.z, 0);
+				avatar_position.x -= 1;
+				eventHandled = true;
 			}
-			eventHandled = true;
+			else if (maze.getValue(avatar_position.x - 1, avatar_position.z) == 0 && avatar_position.x - 1 >= 0){
+				avatar_position.x -= 1;
+				eventHandled = true;
+			}
 		}
 		if (key == GLFW_KEY_RIGHT){
-			if (maze.getValue(avatar_position.x + 1, avatar_position.z) == 0 && avatar_position.z - 1 <= DIM){
-				avatar_position.x += 1; 
+			if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS){
+				maze.setValue(avatar_position.x + 1, avatar_position.z, 0);
+				avatar_position.x += 1;
+				eventHandled = true;
 			}
-			eventHandled = true;
+			else if (maze.getValue(avatar_position.x + 1, avatar_position.z) == 0 && avatar_position.z - 1 <= DIM){
+				avatar_position.x += 1;
+				eventHandled = true;
+			}	
 		}
 	}
 
