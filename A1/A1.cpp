@@ -373,6 +373,11 @@ void A1::guiLogic()
 	float opacity(0.5f);
 
 	ImGui::Begin("Debug Window", &showDebugWindow, ImVec2(100, 100), opacity, windowFlags);
+	if (ImGui::Button("Create New Game")){
+		maze.digMaze();
+		avatar_position = initPosition();
+	}
+	ImGui::SameLine();
 	if (ImGui::Button("Quit Application"))
 	{
 		glfwSetWindowShouldClose(m_window, GL_TRUE);
