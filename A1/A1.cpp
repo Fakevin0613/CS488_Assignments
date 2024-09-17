@@ -353,6 +353,18 @@ void A1::initAvatar()
 void A1::appLogic()
 {
 	// Place per frame, application logic here ...
+	if(!isDragging){
+		rotationAngleX += rotationSpeedX;
+		rotationSpeedX *= 0.9f;
+		if (fabs(rotationSpeedX) < 0.03f){
+			rotationSpeedX = 0.0f;
+		}
+		// rotationAngleY += rotationSpeedY;
+		// rotationSpeedY *= 0.9f;
+		// if (fabs(rotationSpeedY) < 0.03f){
+		// 	rotationSpeedY = 0.0f;
+		// }
+	}
 }
 
 //----------------------------------------------------------------------------------------
@@ -377,7 +389,6 @@ void A1::guiLogic()
 		maze.digMaze();
 		avatar_position = initPosition();
 	}
-	ImGui::SameLine();
 	if (ImGui::Button("Quit Application"))
 	{
 		glfwSetWindowShouldClose(m_window, GL_TRUE);
@@ -450,8 +461,8 @@ void A1::draw()
 {
 	// Create a global transformation for the model (centre it).
 	mat4 W;
-	W = glm::rotate(W, glm::radians(rotationAngleX), glm::vec3(0.0f, 1.0f, 0.0f));  // Rotate around y-axis
-	W = glm::rotate(W, glm::radians(rotationAngleY), glm::vec3(1.0f, 0.0f, 0.0f));  // Rotate around x-axis
+	W = glm::rotate(W, glm::radians(rotationAngleX), glm::vec3(0.0f, 1.0f, 0.0f));  // Rotate around x-axis
+	// W = glm::rotate(W, glm::radians(rotationAngleY), glm::vec3(1.0f, 0.0f, 0.0f));  // Rotate around y-axis
 	W = glm::translate(W, glm::vec3(-float(DIM) / 2.0f, 0, -float(DIM) / 2.0f));
 	
 	m_shader.enable();
@@ -546,12 +557,14 @@ bool A1::mouseMoveEvent(double xPos, double yPos)
 		if (isDragging) {
 			double xChange = xPos - lastMouseX;
 			rotationAngleX += (float) xChange * 0.1f;
-			double yChange = yPos - lastMouseY;
-			rotationAngleY += (float) yChange * 0.1f;
+			rotationSpeedX = xChange * 0.85f;
+			// double yChange = yPos - lastMouseY;
+			// rotationAngleY += (float) yChange * 0.1f;
+			// rotationSpeedY = yChange * 0.85f;
 			
 		}
 		lastMouseX = xPos;
-		lastMouseY = yPos;
+		// lastMouseY = yPos;
 		eventHandled = true;
 	}
 
@@ -573,6 +586,8 @@ bool A1::mouseButtonInputEvent(int button, int actions, int mods)
 				isDragging = true;
 				double xPos, yPos;
 				glfwGetCursorPos(m_window, &xPos, &yPos);
+				rotationSpeedX = 0.0f;
+				// rotationSpeedY = 0.0f;
 			}
 			else if (actions == GLFW_RELEASE) {
             	isDragging = false;

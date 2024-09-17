@@ -85,8 +85,10 @@ private:
 	bool isDragging = false;
 	double lastMouseX = 0.0;
 	float rotationAngleX = 0.0f;
-	double lastMouseY = 0.0;
-	float rotationAngleY = 0.0f;
+	float rotationSpeedX = 0.0f;
+	// double lastMouseY = 0.0;
+	// float rotationAngleY = 0.0f;
+	// float rotationSpeedY = 0.0f;
 
 	// wall height
 	float wall_height;
