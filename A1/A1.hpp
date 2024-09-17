@@ -31,6 +31,7 @@ protected:
 
 private:
 	Maze maze;
+	void reset();
 	void initGrid();
 	void initCube();
 	void initFloor();
@@ -82,14 +83,14 @@ private:
 		AVATAR
 	};
 
-	float mazeScale = 1.0f;
-	bool isDragging = false;
-	double lastMouseX = 0.0;
-	float rotationAngleX = 0.0f;
-	float rotationSpeedX = 0.0f;
-	// double lastMouseY = 0.0;
-	// float rotationAngleY = 0.0f;
-	// float rotationSpeedY = 0.0f;
+	float mazeScale;
+	bool isDragging;
+	double lastMouseX;
+	float rotationAngleX;
+	float rotationSpeedX;
+	// double lastMouseY;
+	// float rotationAngleY;
+	// float rotationSpeedY;
 
 	// wall height
 	float wall_height;

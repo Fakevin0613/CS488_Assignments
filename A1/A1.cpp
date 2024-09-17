@@ -71,15 +71,7 @@ void A1::init()
 	col_uni = m_shader.getUniformLocation("colour");
 
 	// init
-	blockColor = glm::vec3(1.0f, 0.0f, 0.0f);  // Red by default
-	floorColor = glm::vec3(0.0f, 1.0f, 0.0f);  // Green by default
-	avatarColor = glm::vec3(0.0f, 0.0f, 1.0f); // Blue by default
-	wall_height = 2.0f;
-	avatar_position = initPosition();
-	initGrid();
-	initCube();
-	initFloor();
-	initAvatar();
+	reset();
 
 	// Set up initial view and projection matrices (need to do this here,
 	// since it depends on the GLFW window being set up correctly).
@@ -92,6 +84,23 @@ void A1::init()
 		glm::radians(30.0f),
 		float(m_framebufferWidth) / float(m_framebufferHeight),
 		1.0f, 1000.0f);
+}
+
+void A1::reset(){
+	blockColor = glm::vec3(1.0f, 0.0f, 0.0f);  // Red by default
+	floorColor = glm::vec3(0.0f, 1.0f, 0.0f);  // Green by default
+	avatarColor = glm::vec3(0.0f, 0.0f, 1.0f); // Blue by default
+	wall_height = 2.0f;
+	mazeScale = 1.0f;
+	isDragging = false;
+	lastMouseX = 0.0;
+	rotationAngleX = 0.0f;
+	rotationSpeedX = 0.0f;
+	avatar_position = initPosition();
+	initGrid();
+	initCube();
+	initFloor();
+	initAvatar();
 }
 
 void A1::initGrid()
@@ -389,6 +398,10 @@ void A1::guiLogic()
 		maze.digMaze();
 		avatar_position = initPosition();
 	}
+	if (ImGui::Button("Reset"))
+	{
+		reset();
+	}
 	if (ImGui::Button("Quit Application"))
 	{
 		glfwSetWindowShouldClose(m_window, GL_TRUE);
@@ -463,7 +476,6 @@ void A1::draw()
 	mat4 W;
 	W = glm::scale(W, glm::vec3(mazeScale));
 	W = glm::rotate(W, glm::radians(rotationAngleX), glm::vec3(0.0f, 1.0f, 0.0f));  // Rotate around x-axis
-	// W = glm::rotate(W, glm::radians(rotationAngleY), glm::vec3(1.0f, 0.0f, 0.0f));  // Rotate around y-axis
 	W = glm::translate(W, glm::vec3(-float(DIM) / 2.0f, 0, -float(DIM) / 2.0f));
 	
 	m_shader.enable();
@@ -559,13 +571,8 @@ bool A1::mouseMoveEvent(double xPos, double yPos)
 			double xChange = xPos - lastMouseX;
 			rotationAngleX += (float) xChange * 0.1f;
 			rotationSpeedX = xChange * 0.85f;
-			// double yChange = yPos - lastMouseY;
-			// rotationAngleY += (float) yChange * 0.1f;
-			// rotationSpeedY = yChange * 0.85f;
-			
 		}
 		lastMouseX = xPos;
-		// lastMouseY = yPos;
 		eventHandled = true;
 	}
 
@@ -588,7 +595,6 @@ bool A1::mouseButtonInputEvent(int button, int actions, int mods)
 				double xPos, yPos;
 				glfwGetCursorPos(m_window, &xPos, &yPos);
 				rotationSpeedX = 0.0f;
-				// rotationSpeedY = 0.0f;
 			}
 			else if (actions == GLFW_RELEASE) {
             	isDragging = false;
@@ -648,9 +654,11 @@ bool A1::keyInputEvent(int key, int action, int mods)
 		}
 		if (key == GLFW_KEY_SPACE)
 		{
-			wall_height += 0.1f;
-			initCube();
-			eventHandled = true;
+			if (wall_height < 10.0f){
+				wall_height += 0.1f;
+				initCube();
+				eventHandled = true;
+			}
 		}
 		if (key == GLFW_KEY_BACKSPACE)
 		{
@@ -721,6 +729,11 @@ bool A1::keyInputEvent(int key, int action, int mods)
 		if (key == GLFW_KEY_D) {
 			maze.digMaze();
 			avatar_position = initPosition();
+			eventHandled = true;
+		}
+
+		if(key == GLFW_KEY_R){
+			reset();
 			eventHandled = true;
 		}
 	}
