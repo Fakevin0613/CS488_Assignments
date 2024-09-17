@@ -75,9 +75,18 @@ private:
 	glm::vec3 floorColor;
 	glm::vec3 avatarColor;
 
-// Enum to track the currently selected object
-enum SelectedObject { MAZE, FLOOR, AVATAR };
-SelectedObject currentSelection = MAZE;
+	enum SelectedObject
+	{
+		BLOCK,
+		FLOOR,
+		AVATAR
+	};
+
+	bool isDragging = false;
+	double lastMouseX = 0.0;
+	float rotationAngleX = 0.0f;
+	double lastMouseY = 0.0;
+	float rotationAngleY = 0.0f;
 
 	// wall height
 	float wall_height;

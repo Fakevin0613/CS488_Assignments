@@ -386,13 +386,6 @@ void A1::guiLogic()
 
 	// Prefixing a widget name with "##" keeps it from being
 	// displayed.
-
-	enum SelectedObject
-	{
-		BLOCK,
-		FLOOR,
-		AVATAR
-	};
 	ImGui::PushID("Color Editor");
 	static SelectedObject currentSelection = BLOCK;
 	ImGui::RadioButton("Maze Block Color", (int*)&currentSelection, 0);
@@ -452,8 +445,10 @@ void A1::draw()
 {
 	// Create a global transformation for the model (centre it).
 	mat4 W;
+	W = glm::rotate(W, glm::radians(rotationAngleX), glm::vec3(0.0f, 1.0f, 0.0f));  // Rotate around y-axis
+	W = glm::rotate(W, glm::radians(rotationAngleY), glm::vec3(1.0f, 0.0f, 0.0f));  // Rotate around x-axis
 	W = glm::translate(W, glm::vec3(-float(DIM) / 2.0f, 0, -float(DIM) / 2.0f));
-
+	
 	m_shader.enable();
 	glEnable(GL_DEPTH_TEST);
 
@@ -466,11 +461,9 @@ void A1::draw()
 	glUniform3f(col_uni, 1, 1, 1);
 	glDrawArrays(GL_LINES, 0, (3 + DIM) * 4);
 
-	// draw Avatar
+	// Draw Avatar
 	mat4 originalW = W;
 	W = glm::translate(W, avatar_position + 0.5f);
-	glUniformMatrix4fv(P_uni, 1, GL_FALSE, value_ptr(proj));
-	glUniformMatrix4fv(V_uni, 1, GL_FALSE, value_ptr(view));
 	glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(W));
 
 	glBindVertexArray(m_avatar_vao);
@@ -484,8 +477,6 @@ void A1::draw()
 		for (int j = 0; j <= DIM + 1; j++)
 		{
 			W = glm::translate(W, glm::vec3(i - 1, 0, j - 1));
-			glUniformMatrix4fv(P_uni, 1, GL_FALSE, value_ptr(proj));
-			glUniformMatrix4fv(V_uni, 1, GL_FALSE, value_ptr(view));
 			glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(W));
 
 			if (i == 0 || i == DIM + 1 || j == 0 || j == DIM + 1 || maze.getValue(i - 1, j - 1) == 0)
@@ -547,11 +538,16 @@ bool A1::mouseMoveEvent(double xPos, double yPos)
 
 	if (!ImGui::IsMouseHoveringAnyWindow())
 	{
-		// Put some code here to handle rotations.  Probably need to
-		// check whether we're *dragging*, not just moving the mouse.
-		// Probably need some instance variables to track the current
-		// rotation amount, and maybe the previous X position (so
-		// that you can rotate relative to the *change* in X.
+		if (isDragging) {
+			double xChange = xPos - lastMouseX;
+			rotationAngleX += (float) xChange * 0.1f;
+			double yChange = yPos - lastMouseY;
+			rotationAngleY += (float) yChange * 0.1f;
+			
+		}
+		lastMouseX = xPos;
+		lastMouseY = yPos;
+		eventHandled = true;
 	}
 
 	return eventHandled;
@@ -567,8 +563,16 @@ bool A1::mouseButtonInputEvent(int button, int actions, int mods)
 
 	if (!ImGui::IsMouseHoveringAnyWindow())
 	{
-		// The user clicked in the window.  If it's the left
-		// mouse button, initiate a rotation.
+		if (button == GLFW_MOUSE_BUTTON_LEFT){
+			if (actions == GLFW_PRESS){
+				isDragging = true;
+				double xPos, yPos;
+				glfwGetCursorPos(m_window, &xPos, &yPos);
+			}
+			else if (actions == GLFW_RELEASE) {
+            	isDragging = false;
+        }
+		}
 	}
 
 	return eventHandled;
@@ -686,6 +690,12 @@ bool A1::keyInputEvent(int key, int action, int mods)
 				avatar_position.x += 1;
 				eventHandled = true;
 			}
+		}
+
+		if (key == GLFW_KEY_D) {
+			maze.digMaze();
+			avatar_position = initPosition();
+			eventHandled = true;
 		}
 	}
 
