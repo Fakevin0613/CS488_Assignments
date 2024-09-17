@@ -82,6 +82,7 @@ private:
 		AVATAR
 	};
 
+	float mazeScale = 1.0f;
 	bool isDragging = false;
 	double lastMouseX = 0.0;
 	float rotationAngleX = 0.0f;

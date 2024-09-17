@@ -355,10 +355,10 @@ void A1::appLogic()
 	// Place per frame, application logic here ...
 	if(!isDragging){
 		rotationAngleX += rotationSpeedX;
-		rotationSpeedX *= 0.9f;
-		if (fabs(rotationSpeedX) < 0.03f){
-			rotationSpeedX = 0.0f;
-		}
+		// rotationSpeedX *= 0.9f;
+		// if (fabs(rotationSpeedX) < 0.03f){
+		// 	rotationSpeedX = 0.0f;
+		// }
 		// rotationAngleY += rotationSpeedY;
 		// rotationSpeedY *= 0.9f;
 		// if (fabs(rotationSpeedY) < 0.03f){
@@ -461,6 +461,7 @@ void A1::draw()
 {
 	// Create a global transformation for the model (centre it).
 	mat4 W;
+	W = glm::scale(W, glm::vec3(mazeScale));
 	W = glm::rotate(W, glm::radians(rotationAngleX), glm::vec3(0.0f, 1.0f, 0.0f));  // Rotate around x-axis
 	// W = glm::rotate(W, glm::radians(rotationAngleY), glm::vec3(1.0f, 0.0f, 0.0f));  // Rotate around y-axis
 	W = glm::translate(W, glm::vec3(-float(DIM) / 2.0f, 0, -float(DIM) / 2.0f));
@@ -591,10 +592,10 @@ bool A1::mouseButtonInputEvent(int button, int actions, int mods)
 			}
 			else if (actions == GLFW_RELEASE) {
             	isDragging = false;
-        }
+        	}
 		}
 	}
-
+	eventHandled = true;
 	return eventHandled;
 }
 
@@ -606,8 +607,13 @@ bool A1::mouseScrollEvent(double xOffSet, double yOffSet)
 {
 	bool eventHandled(false);
 
-	// Zoom in or out.
-
+    if (yOffSet > 0) {
+        mazeScale -= 0.1f;
+    } else if (yOffSet < 0) {
+        mazeScale += 0.1f;
+    }
+    mazeScale = glm::clamp(mazeScale, 0.4f, 2.0f);
+	eventHandled = true;
 	return eventHandled;
 }
 
