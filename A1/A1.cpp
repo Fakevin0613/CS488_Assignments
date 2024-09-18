@@ -22,7 +22,7 @@ static const float PI = 3.14159265f;
 //----------------------------------------------------------------------------------------
 // Constructor
 A1::A1()
-	: current_col(0), maze(DIM)
+	: current_col(0), maze(DIM), currentMaze(DIM)
 {
 	colour[0] = 0.0f;
 	colour[1] = 0.0f;
@@ -49,8 +49,6 @@ void A1::init()
 	cout << "Random number seed = " << rseed << endl;
 
 	// DELETE FROM HERE...
-	maze.digMaze();
-	maze.printMaze();
 	// ...TO HERE
 
 	// Set the background colour.
@@ -71,6 +69,7 @@ void A1::init()
 	col_uni = m_shader.getUniformLocation("colour");
 
 	// init
+	dig();
 	reset();
 
 	// Set up initial view and projection matrices (need to do this here,
@@ -86,7 +85,30 @@ void A1::init()
 		1.0f, 1000.0f);
 }
 
+void A1::dig(){
+	maze.digMaze();
+	for (int i=0; i<DIM; i++) {
+		for (int j=0; j<DIM; j++) { 
+			currentMaze.setValue(i, j, maze.getValue(i, j));
+		}
+	}
+	maze.printMaze();
+	avatar_position = initPosition();
+	avatar_target_position = initPosition();
+	avatar_current_position = initPosition();
+	is_moving = false;
+	initGrid();
+	initCube();
+	initFloor();
+	initAvatar();
+}
+
 void A1::reset(){
+	for (int i=0; i<DIM; i++) {
+		for (int j=0; j<DIM; j++) { 
+			maze.setValue(i, j, currentMaze.getValue(i, j));
+		}
+	}
 	blockColor = glm::vec3(1.0f, 0.0f, 0.0f);  // Red by default
 	floorColor = glm::vec3(0.0f, 1.0f, 0.0f);  // Green by default
 	avatarColor = glm::vec3(0.0f, 0.0f, 1.0f); // Blue by default
@@ -97,6 +119,9 @@ void A1::reset(){
 	rotationAngleX = 0.0f;
 	rotationSpeedX = 0.0f;
 	avatar_position = initPosition();
+	avatar_target_position = initPosition();
+	avatar_current_position = initPosition();
+	is_moving = false;
 	initGrid();
 	initCube();
 	initFloor();
@@ -354,7 +379,6 @@ void A1::initAvatar()
 
 	CHECK_GL_ERRORS;
 }
-
 //----------------------------------------------------------------------------------------
 /*
  * Called once per frame, before guiLogic().
@@ -364,16 +388,18 @@ void A1::appLogic()
 	// Place per frame, application logic here ...
 	if(!isDragging){
 		rotationAngleX += rotationSpeedX;
-		// rotationSpeedX *= 0.9f;
-		// if (fabs(rotationSpeedX) < 0.03f){
-		// 	rotationSpeedX = 0.0f;
-		// }
-		// rotationAngleY += rotationSpeedY;
-		// rotationSpeedY *= 0.9f;
-		// if (fabs(rotationSpeedY) < 0.03f){
-		// 	rotationSpeedY = 0.0f;
-		// }
 	}
+
+	glm::vec3 direction = avatar_target_position - avatar_current_position;
+    if (is_moving && avatar_target_position != avatar_position) {
+        avatar_position += direction * 0.05f;
+		float distance = glm::length(avatar_target_position - avatar_position);
+		if(distance <= 0.1f){
+			avatar_position = avatar_target_position;
+			avatar_current_position = avatar_position;
+			is_moving = false;
+		}
+    }
 }
 
 //----------------------------------------------------------------------------------------
@@ -395,8 +421,7 @@ void A1::guiLogic()
 
 	ImGui::Begin("Debug Window", &showDebugWindow, ImVec2(100, 100), opacity, windowFlags);
 	if (ImGui::Button("Create New Game")){
-		maze.digMaze();
-		avatar_position = initPosition();
+		dig();
 	}
 	if (ImGui::Button("Reset"))
 	{
@@ -501,9 +526,9 @@ void A1::draw()
 	W = originalW;
 
 	// Draw the cubes and floors
-	for (int i = 0; i <= DIM + 1; i++)
+	for (int i = 1; i <= DIM; i++)
 	{
-		for (int j = 0; j <= DIM + 1; j++)
+		for (int j = 1; j <= DIM; j++)
 		{
 			W = glm::translate(W, glm::vec3(i - 1, 0, j - 1));
 			glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(W));
@@ -570,7 +595,7 @@ bool A1::mouseMoveEvent(double xPos, double yPos)
 		if (isDragging) {
 			double xChange = xPos - lastMouseX;
 			rotationAngleX += (float) xChange * 0.1f;
-			rotationSpeedX = xChange * 0.85f;
+			rotationSpeedX = xChange * 0.02f;
 		}
 		lastMouseX = xPos;
 		eventHandled = true;
@@ -669,66 +694,73 @@ bool A1::keyInputEvent(int key, int action, int mods)
 				eventHandled = true;
 			}
 		}
-		if (key == GLFW_KEY_UP)
+		if (key == GLFW_KEY_UP && is_moving == false)
 		{
 			if (avatar_position.z - 1 >= 0 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS))
 			{
 				maze.setValue(avatar_position.x, avatar_position.z - 1, 0);
-				avatar_position.z -= 1;
+				avatar_target_position.z = avatar_position.z - 1;
+        		is_moving = true;
 				eventHandled = true;
 			}
 			else if (maze.getValue(avatar_position.x, avatar_position.z - 1) == 0 && avatar_position.z - 1 >= 0)
 			{
-				avatar_position.z -= 1;
+				avatar_target_position.z = avatar_position.z - 1;
+        		is_moving = true;
 				eventHandled = true;
 			}
 		}
-		if (key == GLFW_KEY_DOWN)
+		if (key == GLFW_KEY_DOWN && is_moving == false)
 		{
 			if (avatar_position.z + 1 <= DIM - 1 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS))
 			{
 				maze.setValue(avatar_position.x, avatar_position.z + 1, 0);
-				avatar_position.z += 1;
+				avatar_target_position.z = avatar_position.z + 1;
+        		is_moving = true;
 				eventHandled = true;
 			}
 			else if (maze.getValue(avatar_position.x, avatar_position.z + 1) == 0 && avatar_position.z + 1 <= DIM - 1)
 			{
-				avatar_position.z += 1;
+				avatar_target_position.z = avatar_position.z + 1;
+        		is_moving = true;
 				eventHandled = true;
 			}
 		}
-		if (key == GLFW_KEY_LEFT)
+		if (key == GLFW_KEY_LEFT && is_moving == false)
 		{
 			if (avatar_position.x - 1 >= 0 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS))
 			{
 				maze.setValue(avatar_position.x - 1, avatar_position.z, 0);
-				avatar_position.x -= 1;
+				avatar_target_position.x = avatar_position.x - 1;
+        		is_moving = true;
 				eventHandled = true;
 			}
 			else if (maze.getValue(avatar_position.x - 1, avatar_position.z) == 0 && avatar_position.x - 1 >= 0)
 			{
-				avatar_position.x -= 1;
+				avatar_target_position.x = avatar_position.x - 1;
+        		is_moving = true;
 				eventHandled = true;
 			}
 		}
-		if (key == GLFW_KEY_RIGHT)
+		if (key == GLFW_KEY_RIGHT && is_moving == false)
 		{
 			if (avatar_position.x + 1 <= DIM - 1 && (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(m_window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS))
 			{
 				maze.setValue(avatar_position.x + 1, avatar_position.z, 0);
-				avatar_position.x += 1;
+				avatar_target_position.x = avatar_position.x + 1;
+        		is_moving = true;
 				eventHandled = true;
 			}
 			else if (maze.getValue(avatar_position.x + 1, avatar_position.z) == 0 && avatar_position.x + 1 <= DIM - 1)
 			{
-				avatar_position.x += 1;
+				avatar_target_position.x = avatar_position.x + 1;
+        		is_moving = true;
 				eventHandled = true;
 			}
 		}
 
 		if (key == GLFW_KEY_D) {
-			maze.digMaze();
-			avatar_position = initPosition();
+			dig();
 			eventHandled = true;
 		}
 

@@ -31,12 +31,15 @@ protected:
 
 private:
 	Maze maze;
+	Maze currentMaze;
+	void dig();
 	void reset();
 	void initGrid();
 	void initCube();
 	void initFloor();
 	glm::vec3 initPosition();
 	void initAvatar();
+	float getDeltaTime();
 
 	// Fields related to the shader and uniforms.
 	ShaderProgram m_shader;
@@ -88,12 +91,13 @@ private:
 	double lastMouseX;
 	float rotationAngleX;
 	float rotationSpeedX;
-	// double lastMouseY;
-	// float rotationAngleY;
-	// float rotationSpeedY;
+
+	// avatar pos
+	glm::vec3 avatar_position;
+	glm::vec3 avatar_target_position;
+	glm::vec3 avatar_current_position;
+	bool is_moving;
 
 	// wall height
 	float wall_height;
-	// avatar pos
-	glm::vec3 avatar_position;
 };
