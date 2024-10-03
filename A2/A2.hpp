@@ -100,6 +100,7 @@ protected:
 
 	glm::mat4 modelTransformation;  // Cube axis translation
     glm::mat4 viewTransformation;  // Eye axis translation
+	glm::mat4 scaleTransformation;  // Scale transformation
 	glm::mat4 gnomonModelTransformation;
     glm::mat4 gnomonViewTransformation;
 

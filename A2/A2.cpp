@@ -252,10 +252,21 @@ glm::mat4 A2::makeProjection() {
 }
 
 void A2::reset() {
-	modelTransformation = glm::mat4(1.0f);
+	modelTransformation = glm::mat4(
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 2.0f, 2.0f, 1.0f
+		);
 	viewTransformation = glm::mat4(1.0f);
-	gnomonModelTransformation = glm::mat4(1.0f);
+	gnomonModelTransformation = glm::mat4(
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 2.0f, 2.0f, 1.0f
+		);
 	gnomonViewTransformation = glm::mat4(1.0f);
+	scaleTransformation  = glm::mat4(1.0f);
 	mode = RotateModel;
 	near = 5.0f;
 	far = 20.f;
@@ -451,7 +462,7 @@ void A2::scaleModel(double xPos, double yPos){
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f
 		);
-		modelTransformation = modelTransformation * temp;
+		scaleTransformation = scaleTransformation * temp;
 	}
 	if (middleMousePressed){
 		glm::mat4 temp(
@@ -460,7 +471,7 @@ void A2::scaleModel(double xPos, double yPos){
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f
 		);
-		modelTransformation = modelTransformation * temp;
+		scaleTransformation = scaleTransformation * temp;
 	}
 	if (rightMousePressed){
 		glm::mat4 temp(
@@ -469,7 +480,7 @@ void A2::scaleModel(double xPos, double yPos){
 			0.0f, 0.0f, multipler, 0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f
 		);
-		modelTransformation = modelTransformation * temp;
+		scaleTransformation = scaleTransformation * temp;
 	}
 
 	previous_x = xPos;
@@ -493,6 +504,7 @@ void A2::perspective(double xPos, double yPos) {
 	if (middleMousePressed){
 		near += distance * FACTOR;
 		near = near > far ? far : near;
+		if (near < 0.0f) near = 0.0f;
 		projection = makeProjection();
 	}
 	if (rightMousePressed){
@@ -624,8 +636,8 @@ void A2::appLogic()
     for (int i = 0; i < 12; i++) {
         glm::vec4 v1 = cubeVertices[cubeEdges[i][0]];
         glm::vec4 v2 = cubeVertices[cubeEdges[i][1]];
-		v1 = projection * viewTransformation * view * mat4(1.0f) * modelTransformation * v1;
-		v2 = projection * viewTransformation * view * mat4(1.0f) * modelTransformation * v2;
+		v1 = projection * viewTransformation * view * mat4(1.0f) * modelTransformation * scaleTransformation * v1;
+		v2 = projection * viewTransformation * view * mat4(1.0f) * modelTransformation * scaleTransformation * v2;
 
 		setLineColour(white);
 
@@ -688,6 +700,7 @@ void A2::appLogic()
 	setLineColour(vec3(1.0f, 1.0f, 1.0f));
 	// cout << viewportX1 << " " << viewportX2 << " " << viewportY1 << " " << viewportY2 << endl;
 	// cout << vleft << " " << vright << " " << vtop << " " << vbot << endl;
+	// cout << modelTransformation << endl;
 	drawLine(glm::vec2(vleft, vtop), glm::vec2(vleft, vbot));
 	drawLine(glm::vec2(vleft, vtop), glm::vec2(vright, vtop));
 	drawLine(glm::vec2(vright, vbot), glm::vec2(vleft, vbot));
