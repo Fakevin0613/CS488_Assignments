@@ -54,6 +54,7 @@ protected:
 	void uploadVertexDataToVbos();
 
 	void initLineData();
+	void initCube();
 
 	void setLineColour(const glm::vec3 & colour);
 
@@ -72,4 +73,56 @@ protected:
 
 	glm::vec3 m_currentLineColour;
 
+	glm::vec4 cubeVertices[8];
+	int cubeEdges[12][2];
+	glm::vec4 gnomonsVertices[4];
+	int gonmonsEdges[3][2];
+	enum Mode { TranslateModel, TranslateView, RotateModel, RotateView, ScaleModel, Perspective, Viewport, None };
+	Mode mode = None;
+	bool leftMousePressed;
+	bool rightMousePressed;
+	bool middleMousePressed;
+	double previous_x;
+	double previous_y;
+
+	float near;
+	float far;
+	float fov;
+
+	float viewportX1;
+	float viewportY1;
+	float viewportX2;
+	float viewportY2;
+	bool viewportMode;
+
+	glm::mat4 view;
+	glm::mat4 projection;
+
+	glm::mat4 modelTransformation;  // Cube axis translation
+    glm::mat4 viewTransformation;  // Eye axis translation
+	glm::mat4 gnomonModelTransformation;
+    glm::mat4 gnomonViewTransformation;
+
+	glm::mat4 createView();
+	glm::mat4 makeProjection();
+	void translateModel(double xPos, double yPos);
+  	void translateView(double xPos, double yPos);
+	void rotateModel(double xPos, double yPos);
+	void rotateView(double xPos, double yPos);
+	void scaleModel(double xPos, double yPos);
+	void perspective(double xPos, double yPos);
+	void viewport(double xPos, double yPos);
+
+	float clipLeft(glm::vec4& v);
+	float clipRight(glm::vec4& v);
+	float clipTop(glm::vec4& v);
+	float clipBot(glm::vec4& v);
+	float clipFront(glm::vec4& v);
+	float clipBack(glm::vec4& v);
+	bool clipping(glm::vec4& A, glm::vec4& B);
+	glm::vec4 normalizeW(glm::vec4& v);
+	void drawInViewPort(glm::vec2& A, glm::vec2& B);
+	glm::vec2 mapToViewport(glm::vec2& v);
+
+	void reset();
 };
