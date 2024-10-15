@@ -31,7 +31,11 @@ A3::A3(const std::string & luaSceneFile)
 	  m_vbo_vertexPositions(0),
 	  m_vbo_vertexNormals(0),
 	  m_vao_arcCircle(0),
-	  m_vbo_arcCircle(0)
+	  m_vbo_arcCircle(0),
+	  trackball(true),
+	  zBuffer(true),
+	  backfaceCulling(false),
+	  frontfaceCulling(false)
 {
 
 }
@@ -337,6 +341,13 @@ void A3::guiLogic()
 		}
 
 		ImGui::Text( "Framerate: %.1f FPS", ImGui::GetIO().Framerate );
+		if (ImGui::BeginMenu("Options")) {
+			ImGui::Checkbox("Circle (C)", &trackball);
+			ImGui::Checkbox("Z-buffer (Z)", &zBuffer);
+			ImGui::Checkbox("Backface culling (B)", &backfaceCulling);
+			ImGui::Checkbox("Frontface culling (F)", &frontfaceCulling);
+			ImGui::EndMenu();
+		}
 
 	ImGui::End();
 }
@@ -379,13 +390,28 @@ static void updateShaderUniforms(
  * Called once per frame, after guiLogic().
  */
 void A3::draw() {
+	if (zBuffer) {
+		glEnable(GL_DEPTH_TEST);
+	}
 
-	glEnable( GL_DEPTH_TEST );
+	if (backfaceCulling) {
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+	}
+
+	if (frontfaceCulling) {
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+	}
+
 	renderSceneGraph(*m_rootNode);
 
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
 
-	glDisable( GL_DEPTH_TEST );
-	renderArcCircle();
+	if (trackball) {
+		renderArcCircle();
+	}
 }
 
 //----------------------------------------------------------------------------------------
@@ -548,6 +574,22 @@ bool A3::keyInputEvent (
 	if( action == GLFW_PRESS ) {
 		if( key == GLFW_KEY_M ) {
 			show_gui = !show_gui;
+			eventHandled = true;
+		}
+		if( key == GLFW_KEY_C ) {
+			trackball = !trackball;
+			eventHandled = true;
+		}
+		if( key == GLFW_KEY_Z ) {
+			zBuffer = !zBuffer;
+			eventHandled = true;
+		}
+		if( key == GLFW_KEY_B ) {
+			backfaceCulling = !backfaceCulling;
+			eventHandled = true;
+		}
+		if( key == GLFW_KEY_F ) {
+			frontfaceCulling = !frontfaceCulling;
 			eventHandled = true;
 		}
 	}

@@ -79,4 +79,10 @@ protected:
 	std::string m_luaSceneFile;
 
 	std::shared_ptr<SceneNode> m_rootNode;
+
+	// Options
+	bool trackball;
+	bool zBuffer;
+	bool backfaceCulling;
+	bool frontfaceCulling;
 };
