@@ -49,7 +49,7 @@ protected:
 
 	void initPerspectiveMatrix();
 	void uploadCommonSceneUniforms();
-	void renderSceneGraph(const SceneNode &node);
+	void renderSceneGraph(const SceneNode &node, const glm::mat4 &parentTransform);
 	void renderArcCircle();
 
 	glm::mat4 m_perpsective;
@@ -85,4 +85,19 @@ protected:
 	bool zBuffer;
 	bool backfaceCulling;
 	bool frontfaceCulling;
+
+	enum Mode { POSITION, JOINTS, None };
+	Mode mode = None;
+	bool leftMousePressed;
+	bool rightMousePressed;
+	bool middleMousePressed;
+	double previous_x;
+	double previous_y;
+	glm::vec3 lastTrackball;
+
+	glm::mat4 puppetTranslation;
+	glm::mat4 puppetRotation;
+
+	void changePostion(double xPos, double yPos);
+	void changeJoints(double xPos, double yPos);
 };

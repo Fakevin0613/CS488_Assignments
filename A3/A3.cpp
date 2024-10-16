@@ -35,7 +35,9 @@ A3::A3(const std::string & luaSceneFile)
 	  trackball(true),
 	  zBuffer(true),
 	  backfaceCulling(false),
-	  frontfaceCulling(false)
+	  frontfaceCulling(false),
+	  puppetTranslation(glm::mat4(1.0f)),
+	  puppetRotation(glm::mat4(1.0f))
 {
 
 }
@@ -45,6 +47,48 @@ A3::A3(const std::string & luaSceneFile)
 A3::~A3()
 {
 
+}
+
+// Not so sure
+void A3::changePostion(double xPos, double yPos) {
+	double xOffset = xPos - previous_x;
+    double yOffset = yPos - previous_y;
+	if (leftMousePressed) {
+		puppetTranslation = translate(mat4(1.0f), vec3(xOffset * 0.01f, -yOffset * 0.01f, 0)) * puppetTranslation;
+	}
+	if (middleMousePressed) {
+		puppetTranslation = translate(mat4(1.0f), vec3(0, 0, yOffset * 0.01f)) * puppetTranslation;
+	}
+	if (rightMousePressed) {
+		float center_x = m_framebufferWidth / 2.0f;
+		float center_y = m_framebufferHeight / 2.0f;
+		float radius = std::min(m_framebufferWidth / 4.0f, m_framebufferHeight / 4.0f);
+
+		vec3 trackball = vec3(xPos - center_x, -yPos + center_y, 0) /= radius;
+		// trackball /= radius;
+		float xy_sqr = trackball.x * trackball.x + trackball.y * trackball.y;
+
+		if (xy_sqr > 1) {
+			trackball /= sqrt(xy_sqr);
+		} else {
+			trackball.z = sqrt(1 - xy_sqr);
+		}
+
+		float cosine = dot(trackball, lastTrackball);
+		float angle = acos(cosine);
+
+		if (angle >= -1 && angle <= 1 && cross(trackball, lastTrackball) != vec3(0.0f)) {
+			puppetRotation = rotate(mat4(1.0f), angle, cross(trackball, lastTrackball)) * puppetRotation;
+		}
+
+		lastTrackball = trackball;
+	}
+	cout << "puppetTranslation: " << puppetTranslation << endl;
+	cout << "puppetRotation: " << puppetRotation << endl;
+}
+
+void A3::changeJoints(double xPos, double yPos) {
+	
 }
 
 //----------------------------------------------------------------------------------------
@@ -340,7 +384,7 @@ void A3::guiLogic()
 			glfwSetWindowShouldClose(m_window, GL_TRUE);
 		}
 
-		ImGui::Text( "Framerate: %.1f FPS", ImGui::GetIO().Framerate );
+		
 		if (ImGui::BeginMenu("Options")) {
 			ImGui::Checkbox("Circle (C)", &trackball);
 			ImGui::Checkbox("Z-buffer (Z)", &zBuffer);
@@ -348,6 +392,7 @@ void A3::guiLogic()
 			ImGui::Checkbox("Frontface culling (F)", &frontfaceCulling);
 			ImGui::EndMenu();
 		}
+		ImGui::Text( "Framerate: %.1f FPS", ImGui::GetIO().Framerate );
 
 	ImGui::End();
 }
@@ -357,14 +402,15 @@ void A3::guiLogic()
 static void updateShaderUniforms(
 		const ShaderProgram & shader,
 		const GeometryNode & node,
-		const glm::mat4 & viewMatrix
+		const glm::mat4 & viewMatrix,
+		const glm::mat4 & transformationMatrix
 ) {
 
 	shader.enable();
 	{
 		//-- Set ModelView matrix:
 		GLint location = shader.getUniformLocation("ModelView");
-		mat4 modelView = viewMatrix * node.trans;
+		mat4 modelView = viewMatrix * transformationMatrix;
 		glUniformMatrix4fv(location, 1, GL_FALSE, value_ptr(modelView));
 		CHECK_GL_ERRORS;
 
@@ -394,17 +440,25 @@ void A3::draw() {
 		glEnable(GL_DEPTH_TEST);
 	}
 
-	if (backfaceCulling) {
+	if (frontfaceCulling || backfaceCulling) {
 		glEnable(GL_CULL_FACE);
-		glCullFace(GL_BACK);
+		glCullFace(GL_FRONT_AND_BACK);
 	}
+	else{
+		if (backfaceCulling) {
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_BACK);
+		}
 
-	if (frontfaceCulling) {
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_FRONT);
+		if (frontfaceCulling) {
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_FRONT);
+		}
 	}
-
-	renderSceneGraph(*m_rootNode);
+	
+	glBindVertexArray(m_vao_meshData);
+	renderSceneGraph(*m_rootNode, glm::mat4(1.0f));
+	glBindVertexArray(0);
 
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
@@ -415,10 +469,10 @@ void A3::draw() {
 }
 
 //----------------------------------------------------------------------------------------
-void A3::renderSceneGraph(const SceneNode & root) {
+void A3::renderSceneGraph(const SceneNode &root, const mat4 &parentTransform) {
 
 	// Bind the VAO once here, and reuse for all GeometryNode rendering below.
-	glBindVertexArray(m_vao_meshData);
+	// glBindVertexArray(m_vao_meshData);
 
 	// This is emphatically *not* how you should be drawing the scene graph in
 	// your final implementation.  This is a non-hierarchical demonstration
@@ -432,15 +486,12 @@ void A3::renderSceneGraph(const SceneNode & root) {
 	// subclasses, that renders the subtree rooted at every node.  Or you
 	// could put a set of mutually recursive functions in this class, which
 	// walk down the tree from nodes of different types.
+	mat4 currentTransform = parentTransform * root.get_transform();
+	cout << currentTransform << endl;
+	if (root.m_nodeType == NodeType::GeometryNode) {
+		const GeometryNode * geometryNode = static_cast<const GeometryNode *>(&root);
 
-	for (const SceneNode * node : root.children) {
-
-		if (node->m_nodeType != NodeType::GeometryNode)
-			continue;
-
-		const GeometryNode * geometryNode = static_cast<const GeometryNode *>(node);
-
-		updateShaderUniforms(m_shader, *geometryNode, m_view);
+		updateShaderUniforms(m_shader, *geometryNode, m_view, currentTransform);
 
 
 		// Get the BatchInfo corresponding to the GeometryNode's unique MeshId.
@@ -452,7 +503,11 @@ void A3::renderSceneGraph(const SceneNode & root) {
 		m_shader.disable();
 	}
 
-	glBindVertexArray(0);
+	for (const SceneNode *childNode : root.children) {
+        renderSceneGraph(*childNode, currentTransform);
+    }
+
+	// glBindVertexArray(0);
 	CHECK_GL_ERRORS;
 }
 
@@ -512,6 +567,27 @@ bool A3::mouseMoveEvent (
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
+	if (!ImGui::IsMouseHoveringAnyWindow()) {
+		switch(mode) {
+			case POSITION:
+				changePostion(xPos, yPos);
+				previous_x = xPos;
+				previous_y = yPos;
+				eventHandled = true;
+				break;
+			case JOINTS:
+				changeJoints(xPos, yPos);
+				previous_x = xPos;
+				previous_y = yPos;
+				eventHandled = true;
+				break;
+			default:
+				previous_x = xPos;
+				previous_y = yPos;
+				break;
+		}
+	}
+	return true;
 
 	return eventHandled;
 }
@@ -592,8 +668,17 @@ bool A3::keyInputEvent (
 			frontfaceCulling = !frontfaceCulling;
 			eventHandled = true;
 		}
+		if (key == GLFW_KEY_P) {
+			mode = POSITION;
+			cout << "mode: POSITION" << endl;
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_J) {
+			mode = JOINTS;
+			cout << "mode: JOINTS" << endl;
+			eventHandled = true;
+		}
 	}
 	// Fill in with event handling code...
-
 	return eventHandled;
 }
