@@ -19,8 +19,16 @@ uniform mat3 NormalMatrix;
 
 struct Material {
     vec3 kd;
+    vec3 ks;
+    float shininess;
 };
 uniform Material material;
+
+out VsOutFsIn {
+	vec3 position_ES; // Eye-space position
+	vec3 normal_ES;   // Eye-space normal
+	LightSource light;
+} vs_out;
 
 // Ambient light intensity for each RGB component.
 uniform vec3 ambientIntensity;
@@ -43,6 +51,12 @@ void main() {
 	vec4 pos4 = vec4(position, 1.0);
 
 	vcolour = diffuseLighting((ModelView * pos4).xyz, normalize(NormalMatrix * normal));
+
+    //-- Convert position and normal to Eye-Space:
+	vs_out.position_ES = (ModelView * pos4).xyz;
+	vs_out.normal_ES = normalize(NormalMatrix * normal);
+
+	vs_out.light = light;
 	
 	gl_Position = Perspective * ModelView * pos4;
 }

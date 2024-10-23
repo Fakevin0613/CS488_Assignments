@@ -17,7 +17,7 @@ using namespace std;
 
 using namespace glm;
 
-static bool show_gui = true;
+static bool gui_hide = false;
 
 const size_t CIRCLE_PTS = 48;
 
@@ -32,6 +32,8 @@ A3::A3(const std::string & luaSceneFile)
 	  m_vbo_vertexNormals(0),
 	  m_vao_arcCircle(0),
 	  m_vbo_arcCircle(0),
+
+	  mode(None),
 	  trackball(true),
 	  zBuffer(true),
 	  backfaceCulling(false),
@@ -49,7 +51,6 @@ A3::~A3()
 
 }
 
-// Not so sure
 void A3::changePostion(double xPos, double yPos) {
 	double xOffset = xPos - previous_x;
     double yOffset = yPos - previous_y;
@@ -64,25 +65,26 @@ void A3::changePostion(double xPos, double yPos) {
 		float center_y = m_framebufferHeight / 2.0f;
 		float radius = std::min(m_framebufferWidth / 4.0f, m_framebufferHeight / 4.0f);
 
-		vec3 trackball = vec3(xPos - center_x, -yPos + center_y, 0) /= radius;
-		// trackball /= radius;
-		float xy_sqr = trackball.x * trackball.x + trackball.y * trackball.y;
+		vec3 trackball_position = vec3(xPos - center_x, center_y - yPos, 0.0f) /= radius;
+		float xy_sqr = trackball_position.x * trackball_position.x + trackball_position.y * trackball_position.y;
 
 		if (xy_sqr > 1) {
-			trackball /= sqrt(xy_sqr);
+			// outside the circle
+			trackball_position /= sqrt(xy_sqr);
 		} else {
-			trackball.z = sqrt(1 - xy_sqr);
+			// within the circle
+			trackball_position.z = sqrt(1 - xy_sqr);
 		}
 
-		float cosine = dot(trackball, lastTrackball);
-		float angle = acos(cosine);
-
-		if (angle >= -1 && angle <= 1 && cross(trackball, lastTrackball) != vec3(0.0f)) {
-			puppetRotation = rotate(mat4(1.0f), angle, cross(trackball, lastTrackball)) * puppetRotation;
+		float cosine = dot(trackball_position, lastTrackball);
+		float angle = acos(glm::clamp(cosine, -1.0f, 1.0f));
+		glm::vec3 axis = glm::cross(trackball_position, lastTrackball);
+		if (axis != vec3(0.0f)) {
+			puppetRotation = rotate(mat4(1.0f), angle, axis) * puppetRotation;
 		}
-
-		lastTrackball = trackball;
+		lastTrackball = trackball_position;
 	}
+	
 	cout << "puppetTranslation: " << puppetTranslation << endl;
 	cout << "puppetRotation: " << puppetRotation << endl;
 }
@@ -307,8 +309,8 @@ void A3::initViewMatrix() {
 //----------------------------------------------------------------------------------------
 void A3::initLightSources() {
 	// World-space position
-	m_light.position = vec3(10.0f, 10.0f, 10.0f);
-	m_light.rgbIntensity = vec3(0.0f); // light
+	m_light.position = vec3(0.0f, 0.0f, 0.0f);
+	m_light.rgbIntensity = vec3(0.5f); // light
 }
 
 //----------------------------------------------------------------------------------------
@@ -358,7 +360,7 @@ void A3::appLogic()
  */
 void A3::guiLogic()
 {
-	if( !show_gui ) {
+	if( gui_hide ) {
 		return;
 	}
 
@@ -374,26 +376,57 @@ void A3::guiLogic()
 
 	ImGui::Begin("Properties", &showDebugWindow, ImVec2(100,100), opacity,
 			windowFlags);
-
-
 		// Add more gui elements here here ...
-
-
 		// Create Button, and check if it was clicked:
-		if( ImGui::Button( "Quit Application" ) ) {
-			glfwSetWindowShouldClose(m_window, GL_TRUE);
-		}
+
+		if (ImGui::BeginMainMenuBar()) {
+			if (ImGui::BeginMenu("Application")) {
+				if (ImGui::Button("Reset Position (keyboard shortcut I)")) {
+					puppetTranslation = glm::mat4(1.0f);
+				}
+				if (ImGui::Button("Reset Orientation (O)")) {
+					puppetRotation = glm::mat4(1.0f);
+				}
+				if (ImGui::Button("Reset Joints (S)")) {
+					// resetJoints();
+				}
+				if (ImGui::Button("Reset All (A)")) {
+					puppetTranslation = glm::mat4(1.0f);
+					puppetRotation = glm::mat4(1.0f);
+					// resetJoints();
+				}
+				if( ImGui::Button( "Quit Application" ) ) {
+					glfwSetWindowShouldClose(m_window, GL_TRUE);
+				}
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Edit")) {
+				if (ImGui::MenuItem("Undo (U)")) {
+					// undo
+				}
+
+				if (ImGui::MenuItem("Redo (R)")) {
+					// redo
+				}
+				ImGui::EndMenu();
+			}
 
 		
-		if (ImGui::BeginMenu("Options")) {
-			ImGui::Checkbox("Circle (C)", &trackball);
-			ImGui::Checkbox("Z-buffer (Z)", &zBuffer);
-			ImGui::Checkbox("Backface culling (B)", &backfaceCulling);
-			ImGui::Checkbox("Frontface culling (F)", &frontfaceCulling);
-			ImGui::EndMenu();
+			if (ImGui::BeginMenu("Options")) {
+				ImGui::Checkbox("Circle (C)", &trackball);
+				ImGui::Checkbox("Z-buffer (Z)", &zBuffer);
+				ImGui::Checkbox("Backface culling (B)", &backfaceCulling);
+				ImGui::Checkbox("Frontface culling (F)", &frontfaceCulling);
+				ImGui::EndMenu();
+			}
+			
+			ImGui::EndMainMenuBar();
 		}
+		ImGui::RadioButton( "None", (int*)&mode, None);
+		ImGui::RadioButton( "Position/Orientation (P)", (int*)&mode, POSITION);
+		ImGui::RadioButton( "Joints (J)", (int*)&mode, JOINTS);
 		ImGui::Text( "Framerate: %.1f FPS", ImGui::GetIO().Framerate );
-
 	ImGui::End();
 }
 
@@ -426,6 +459,14 @@ static void updateShaderUniforms(
 		vec3 kd = node.material.kd;
 		glUniform3fv(location, 1, value_ptr(kd));
 		CHECK_GL_ERRORS;
+		location = shader.getUniformLocation("material.ks");
+		vec3 ks = node.material.ks;
+		glUniform3fv(location, 1, value_ptr(ks));
+		CHECK_GL_ERRORS;
+		location = shader.getUniformLocation("material.shininess");
+		float shininess = node.material.shininess;
+		glUniform1f(location, shininess);
+		CHECK_GL_ERRORS;
 	}
 	shader.disable();
 
@@ -449,7 +490,6 @@ void A3::draw() {
 			glEnable(GL_CULL_FACE);
 			glCullFace(GL_BACK);
 		}
-
 		if (frontfaceCulling) {
 			glEnable(GL_CULL_FACE);
 			glCullFace(GL_FRONT);
@@ -457,7 +497,7 @@ void A3::draw() {
 	}
 	
 	glBindVertexArray(m_vao_meshData);
-	renderSceneGraph(*m_rootNode, glm::mat4(1.0f));
+	renderSceneGraph(*m_rootNode, puppetTranslation *  puppetRotation * m_rootNode->get_transform());
 	glBindVertexArray(0);
 
 	glDisable(GL_DEPTH_TEST);
@@ -487,7 +527,6 @@ void A3::renderSceneGraph(const SceneNode &root, const mat4 &parentTransform) {
 	// could put a set of mutually recursive functions in this class, which
 	// walk down the tree from nodes of different types.
 	mat4 currentTransform = parentTransform * root.get_transform();
-	cout << currentTransform << endl;
 	if (root.m_nodeType == NodeType::GeometryNode) {
 		const GeometryNode * geometryNode = static_cast<const GeometryNode *>(&root);
 
@@ -604,7 +643,36 @@ bool A3::mouseButtonInputEvent (
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
-
+	if (!ImGui::IsMouseHoveringAnyWindow()){
+		if (actions == GLFW_PRESS) {
+			if (button == GLFW_MOUSE_BUTTON_LEFT) {
+				leftMousePressed = true;
+				eventHandled = true;
+			}
+			if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+				middleMousePressed = true;
+				eventHandled = true;
+			}
+			if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+				rightMousePressed = true;
+				eventHandled = true;
+			}
+		}
+		if (actions == GLFW_RELEASE) {
+			if (button == GLFW_MOUSE_BUTTON_LEFT) {
+				leftMousePressed = false;
+				eventHandled = true;
+			}
+			if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+				middleMousePressed = false;
+				eventHandled = true;
+			}
+			if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+				rightMousePressed = false;
+				eventHandled = true;
+			}
+		}
+	}
 	return eventHandled;
 }
 
@@ -648,8 +716,32 @@ bool A3::keyInputEvent (
 	bool eventHandled(false);
 
 	if( action == GLFW_PRESS ) {
+		if (key == GLFW_KEY_Q) {
+			glfwSetWindowShouldClose(m_window, GL_TRUE);
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_A ) {
+			puppetTranslation = glm::mat4(1.0f);
+			puppetRotation = glm::mat4(1.0f);
+			// To do reset joints
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_S) {
+			// To do reset joints
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_I) {
+			puppetTranslation = glm::mat4(1.0f);
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_O) {
+			puppetRotation = glm::mat4(1.0f);
+			eventHandled = true;
+		}
+
+
 		if( key == GLFW_KEY_M ) {
-			show_gui = !show_gui;
+			gui_hide = !gui_hide;
 			eventHandled = true;
 		}
 		if( key == GLFW_KEY_C ) {
