@@ -80,7 +80,7 @@ void A3::changePostion(double xPos, double yPos) {
 		float angle = acos(glm::clamp(cosine, -1.0f, 1.0f));
 		glm::vec3 axis = glm::cross(trackball_position, lastTrackball);
 		if (axis != vec3(0.0f)) {
-			puppetRotation = rotate(mat4(1.0f), angle, axis) * puppetRotation;
+			puppetRotation = glm::rotate(mat4(1.0f), angle, axis) * puppetRotation;
 		}
 		lastTrackball = trackball_position;
 	}
@@ -309,7 +309,7 @@ void A3::initViewMatrix() {
 //----------------------------------------------------------------------------------------
 void A3::initLightSources() {
 	// World-space position
-	m_light.position = vec3(0.0f, 0.0f, 0.0f);
+	m_light.position = vec3(0.0f, 0.0f, -1.0f);
 	m_light.rgbIntensity = vec3(0.5f); // light
 }
 
