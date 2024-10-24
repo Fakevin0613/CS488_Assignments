@@ -8,9 +8,13 @@
 #include "cs488-framework/MeshConsolidator.hpp"
 
 #include "SceneNode.hpp"
+#include "JointNode.hpp"
 
 #include <glm/glm.hpp>
 #include <memory>
+#include <set>
+#include <vector>
+#include <stack>
 
 struct LightSource {
 	glm::vec3 position;
@@ -100,4 +104,19 @@ protected:
 
 	void changePostion(double xPos, double yPos);
 	void changeJoints(double xPos, double yPos);
+
+	bool picking;
+	std::set<JointNode*> selectedJoints;
+
+	void leftPicking();
+
+	std::vector<JointNode*> state;
+	std::stack<std::vector<JointNode*>> undo;
+	std::stack<std::vector<JointNode*>> redo;
+
+	void resetJoints(SceneNode * node);
+
+	// trackball
+	bool isMouseDown = false;
+	bool isFirstClick = true;
 };

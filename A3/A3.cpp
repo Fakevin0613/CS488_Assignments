@@ -14,6 +14,7 @@ using namespace std;
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/io.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <queue>
 
 using namespace glm;
 
@@ -39,7 +40,10 @@ A3::A3(const std::string & luaSceneFile)
 	  backfaceCulling(false),
 	  frontfaceCulling(false),
 	  puppetTranslation(glm::mat4(1.0f)),
-	  puppetRotation(glm::mat4(1.0f))
+	  puppetRotation(glm::mat4(1.0f)),
+	  picking(false),
+	  isMouseDown(false),
+	  isFirstClick(true)
 {
 
 }
@@ -76,21 +80,122 @@ void A3::changePostion(double xPos, double yPos) {
 			trackball_position.z = sqrt(1 - xy_sqr);
 		}
 
-		float cosine = dot(trackball_position, lastTrackball);
-		float angle = acos(glm::clamp(cosine, -1.0f, 1.0f));
+		if (isFirstClick) {
+			lastTrackball = trackball_position;
+			isFirstClick = false;
+			return;
+		}
+
+		float cosine = glm::clamp(dot(trackball_position, lastTrackball), -1.0f, 1.0f);
+		float angle = acos(cosine);
 		glm::vec3 axis = glm::cross(trackball_position, lastTrackball);
 		if (axis != vec3(0.0f)) {
+			axis = glm::normalize(axis);
 			puppetRotation = glm::rotate(mat4(1.0f), angle, axis) * puppetRotation;
 		}
 		lastTrackball = trackball_position;
 	}
 	
-	cout << "puppetTranslation: " << puppetTranslation << endl;
-	cout << "puppetRotation: " << puppetRotation << endl;
+	// cout << "puppetTranslation: " << puppetTranslation << endl;
+	// cout << "puppetRotation: " << puppetRotation << endl;
 }
 
 void A3::changeJoints(double xPos, double yPos) {
+	if (middleMousePressed) {
+		for (JointNode* joint : selectedJoints) {
+			joint->rotateX(yPos - previous_y);
+		}
+	}
+	if (rightMousePressed) {
+		for (JointNode* joint : selectedJoints) {
+			joint->rotateY(xPos - previous_x);
+		}
+	}
+}
+
+void A3::leftPicking() {
+	picking = true;
+
+	// clear the screen color and depth buffer
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// draw picking color
+	uploadCommonSceneUniforms();
+	CHECK_GL_ERRORS;
+	draw();
+	CHECK_GL_ERRORS;
+
+	double xpos, ypos;
+	glfwGetCursorPos( m_window, &xpos, &ypos );
+
+	float color3[3];
+	glReadPixels( (int) xpos, (int) m_windowHeight - ypos, 1, 1, GL_RGB, GL_FLOAT, color3);
+	CHECK_GL_ERRORS;
+	// cout << "color3: " << color3[0] << " " << color3[1] << " " << color3[2] << endl;
+
+	unsigned int red = static_cast<unsigned int>(color3[0] * 255.0f);
+	unsigned int green = static_cast<unsigned int>(color3[1] * 255.0f);
+	unsigned int blue = static_cast<unsigned int>(color3[2] * 255.0f);
+	unsigned int nodeID = red + (green << 8) + (blue << 16);
+
+	// cout << "nodeID: " << nodeID << endl;
 	
+	std::queue<SceneNode*> container;
+	container.push(m_rootNode.get());
+	while (container.size() > 0) {
+		SceneNode* node = container.front();
+		container.pop();
+		// cout << node->m_nodeId << endl;
+		// bool temp = node->m_nodeType == NodeType::JointNode;
+		// cout << temp<< endl;
+		if (node->m_nodeId == (unsigned int) 5) {
+			JointNode* jointNode = dynamic_cast<JointNode*>(node); 
+			jointNode->isNeck = true;
+		}
+		for (SceneNode* child : node->children) {
+			if (child->m_nodeId == nodeID) {
+				if (node->m_nodeType == NodeType::JointNode) {
+					child->isSelected = !child->isSelected;
+					JointNode* jointNode = dynamic_cast<JointNode*>(node); 
+					if (selectedJoints.find(jointNode) == selectedJoints.end()) {
+						selectedJoints.insert(jointNode);
+					} else {
+						selectedJoints.erase(jointNode);
+					}
+					break;
+				}
+			}
+			else{
+				container.push(child);
+			}
+		}
+	}
+
+	cout << "Selected Joint: ";
+	for (JointNode* joint : selectedJoints) {
+		cout << joint->m_nodeId << " ";
+	}
+	cout << endl;
+	
+
+	picking = false;
+}
+
+void A3::resetJoints(SceneNode * node) {
+	undo = std::stack<std::vector<JointNode*>>();
+	redo = std::stack<std::vector<JointNode*>>();
+	if (node->m_nodeType == NodeType::JointNode) {
+		JointNode* jointNode = dynamic_cast<JointNode*>(node);
+		jointNode->current_x = jointNode->m_joint_x.init;
+		jointNode->current_y = jointNode->m_joint_y.init;
+		jointNode->set_transform(mat4(1.0f));
+		jointNode->rotateX(jointNode->current_x);
+		jointNode->rotateY(jointNode->current_y);
+		jointNode->isSelected = false;
+	}
+	for (SceneNode* child : node->children) {
+		resetJoints(child);
+	}
 }
 
 //----------------------------------------------------------------------------------------
@@ -322,22 +427,32 @@ void A3::uploadCommonSceneUniforms() {
 		glUniformMatrix4fv(location, 1, GL_FALSE, value_ptr(m_perpsective));
 		CHECK_GL_ERRORS;
 
-
-		//-- Set LightSource uniform for the scene:
-		{
-			location = m_shader.getUniformLocation("light.position");
-			glUniform3fv(location, 1, value_ptr(m_light.position));
-			location = m_shader.getUniformLocation("light.rgbIntensity");
-			glUniform3fv(location, 1, value_ptr(m_light.rgbIntensity));
-			CHECK_GL_ERRORS;
+		location = m_shader.getUniformLocation("picking");
+		if (picking) {
+			glUniform1i(location, 1);
+		} else {
+			glUniform1i(location, 0);
 		}
+		CHECK_GL_ERRORS;
 
-		//-- Set background light ambient intensity
-		{
-			location = m_shader.getUniformLocation("ambientIntensity");
-			vec3 ambientIntensity(0.25f);
-			glUniform3fv(location, 1, value_ptr(ambientIntensity));
-			CHECK_GL_ERRORS;
+		// all lighting and materials are discarded when picking
+		if(!picking) {
+				//-- Set LightSource uniform for the scene:
+			{
+				location = m_shader.getUniformLocation("light.position");
+				glUniform3fv(location, 1, value_ptr(m_light.position));
+				location = m_shader.getUniformLocation("light.rgbIntensity");
+				glUniform3fv(location, 1, value_ptr(m_light.rgbIntensity));
+				CHECK_GL_ERRORS;
+			}
+
+			//-- Set background light ambient intensity
+			{
+				location = m_shader.getUniformLocation("ambientIntensity");
+				vec3 ambientIntensity(0.25f);
+				glUniform3fv(location, 1, value_ptr(ambientIntensity));
+				CHECK_GL_ERRORS;
+			}
 		}
 	}
 	m_shader.disable();
@@ -388,12 +503,12 @@ void A3::guiLogic()
 					puppetRotation = glm::mat4(1.0f);
 				}
 				if (ImGui::Button("Reset Joints (S)")) {
-					// resetJoints();
+					resetJoints(m_rootNode.get());
 				}
 				if (ImGui::Button("Reset All (A)")) {
 					puppetTranslation = glm::mat4(1.0f);
 					puppetRotation = glm::mat4(1.0f);
-					// resetJoints();
+					resetJoints(m_rootNode.get());
 				}
 				if( ImGui::Button( "Quit Application" ) ) {
 					glfwSetWindowShouldClose(m_window, GL_TRUE);
@@ -436,9 +551,9 @@ static void updateShaderUniforms(
 		const ShaderProgram & shader,
 		const GeometryNode & node,
 		const glm::mat4 & viewMatrix,
-		const glm::mat4 & transformationMatrix
+		const glm::mat4 & transformationMatrix,
+		bool picking
 ) {
-
 	shader.enable();
 	{
 		//-- Set ModelView matrix:
@@ -447,26 +562,47 @@ static void updateShaderUniforms(
 		glUniformMatrix4fv(location, 1, GL_FALSE, value_ptr(modelView));
 		CHECK_GL_ERRORS;
 
-		//-- Set NormMatrix:
-		location = shader.getUniformLocation("NormalMatrix");
-		mat3 normalMatrix = glm::transpose(glm::inverse(mat3(modelView)));
-		glUniformMatrix3fv(location, 1, GL_FALSE, value_ptr(normalMatrix));
-		CHECK_GL_ERRORS;
+		if (picking) {
+			int id = node.m_nodeId;
+			float r = ((id & 0x000000FF) >>  0) / 255.0f;
+			float g = ((id & 0x0000FF00) >>  8) / 255.0f;
+			float b = ((id & 0x00FF0000) >> 16) / 255.0f;
+			location = shader.getUniformLocation("pickingColour");
+			glUniform3f( location, r, g, b );
+			CHECK_GL_ERRORS;
+		}
+		else if (node.isSelected) {
+			location = shader.getUniformLocation("material.ks");
+			vec3 ks = node.material.ks;
+			glUniform3fv(location, 1, value_ptr(ks));
+			CHECK_GL_ERRORS;
+		}
+		else{
+			location = shader.getUniformLocation("picking");
+			glUniform1f(location, 0);
+			//-- Set NormMatrix:
+			location = shader.getUniformLocation("NormalMatrix");
+			mat3 normalMatrix = glm::transpose(glm::inverse(mat3(modelView)));
+			glUniformMatrix3fv(location, 1, GL_FALSE, value_ptr(normalMatrix));
+			CHECK_GL_ERRORS;
 
 
-		//-- Set Material values:
-		location = shader.getUniformLocation("material.kd");
-		vec3 kd = node.material.kd;
-		glUniform3fv(location, 1, value_ptr(kd));
-		CHECK_GL_ERRORS;
-		location = shader.getUniformLocation("material.ks");
-		vec3 ks = node.material.ks;
-		glUniform3fv(location, 1, value_ptr(ks));
-		CHECK_GL_ERRORS;
-		location = shader.getUniformLocation("material.shininess");
-		float shininess = node.material.shininess;
-		glUniform1f(location, shininess);
-		CHECK_GL_ERRORS;
+			//-- Set Material values:
+			location = shader.getUniformLocation("material.kd");
+			vec3 kd = node.material.kd;
+			glUniform3fv(location, 1, value_ptr(kd));
+			CHECK_GL_ERRORS;
+			location = shader.getUniformLocation("material.ks");
+			vec3 ks = node.material.ks;
+			glUniform3fv(location, 1, value_ptr(ks));
+			CHECK_GL_ERRORS;
+			location = shader.getUniformLocation("material.shininess");
+			float shininess = node.material.shininess;
+			glUniform1f(location, shininess);
+			CHECK_GL_ERRORS;
+		}
+
+		
 	}
 	shader.disable();
 
@@ -530,7 +666,7 @@ void A3::renderSceneGraph(const SceneNode &root, const mat4 &parentTransform) {
 	if (root.m_nodeType == NodeType::GeometryNode) {
 		const GeometryNode * geometryNode = static_cast<const GeometryNode *>(&root);
 
-		updateShaderUniforms(m_shader, *geometryNode, m_view, currentTransform);
+		updateShaderUniforms(m_shader, *geometryNode, m_view, currentTransform, picking);
 
 
 		// Get the BatchInfo corresponding to the GeometryNode's unique MeshId.
@@ -647,6 +783,9 @@ bool A3::mouseButtonInputEvent (
 		if (actions == GLFW_PRESS) {
 			if (button == GLFW_MOUSE_BUTTON_LEFT) {
 				leftMousePressed = true;
+				if (mode == JOINTS) {
+					leftPicking();
+				}
 				eventHandled = true;
 			}
 			if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
@@ -655,6 +794,8 @@ bool A3::mouseButtonInputEvent (
 			}
 			if (button == GLFW_MOUSE_BUTTON_RIGHT) {
 				rightMousePressed = true;
+				isMouseDown = true;
+    			isFirstClick = true;
 				eventHandled = true;
 			}
 		}
@@ -669,6 +810,7 @@ bool A3::mouseButtonInputEvent (
 			}
 			if (button == GLFW_MOUSE_BUTTON_RIGHT) {
 				rightMousePressed = false;
+				isMouseDown = false;
 				eventHandled = true;
 			}
 		}
@@ -723,11 +865,11 @@ bool A3::keyInputEvent (
 		if (key == GLFW_KEY_A ) {
 			puppetTranslation = glm::mat4(1.0f);
 			puppetRotation = glm::mat4(1.0f);
-			// To do reset joints
+			resetJoints(m_rootNode.get());
 			eventHandled = true;
 		}
 		if (key == GLFW_KEY_S) {
-			// To do reset joints
+			resetJoints(m_rootNode.get());
 			eventHandled = true;
 		}
 		if (key == GLFW_KEY_I) {
@@ -768,6 +910,14 @@ bool A3::keyInputEvent (
 		if (key == GLFW_KEY_J) {
 			mode = JOINTS;
 			cout << "mode: JOINTS" << endl;
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_R) {
+			// todo
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_U) {
+			// todo
 			eventHandled = true;
 		}
 	}

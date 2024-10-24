@@ -30,28 +30,8 @@ out VsOutFsIn {
 	LightSource light;
 } vs_out;
 
-// Ambient light intensity for each RGB component.
-uniform vec3 ambientIntensity;
-
-out vec3 vcolour;
-
-vec3 diffuseLighting(vec3 vertPosition, vec3 vertNormal) {
-    // Direction from vertex to light source.
-    vec3 l = normalize(light.position - vertPosition);
-
-    float n_dot_l = max(dot(vertNormal, l), 0.0);
-
-    vec3 diffuse;
-    diffuse = material.kd * n_dot_l;
-
-    return ambientIntensity*material.kd + light.rgbIntensity*diffuse;
-}
-
 void main() {
 	vec4 pos4 = vec4(position, 1.0);
-
-	vcolour = diffuseLighting((ModelView * pos4).xyz, normalize(NormalMatrix * normal));
-
     //-- Convert position and normal to Eye-Space:
 	vs_out.position_ES = (ModelView * pos4).xyz;
 	vs_out.normal_ES = normalize(NormalMatrix * normal);

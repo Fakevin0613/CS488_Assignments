@@ -8,7 +8,7 @@ black = gr.material({0.0,0.0, 0.0}, {0.1, 0.1, 0.1}, 10)
 white = gr.material({1.0,1.0, 1.0}, {0.5, 0.5, 0.5}, 10)
 
 torso = gr.mesh('sphere', 'torso')
-torso:set_material(white)
+torso:set_material(green)
 torso:scale(0.5, 1.0, 0.5)
 rootNode:add_child(torso)
 
@@ -46,31 +46,30 @@ torso:add_child(rightUpperArmNode)
 rightUpperArmNode:scale(1.0, 0.5, 1.0)
 rightUpperArmNode:translate(0.4, 0.75, 0.0)
 
-rightUpperArmJoint = gr.joint('rightUpperArmJoint', {-60, 0, 60}, {-30, 0, 30});
+rightUpperArmJoint = gr.joint('rightUpperArmJoint', {-45, 0, 45}, {-30, 0, 30});
 rightUpperArmNode:add_child(rightUpperArmJoint)
 
 rightUpperArm = gr.mesh('sphere', 'rightUpperArm')
 rightUpperArmJoint:add_child(rightUpperArm)
-rightUpperArm:set_material(white)
+rightUpperArm:set_material(green)
 rightUpperArm:translate(0.6, 0.75, 0.0)
 rightUpperArm:scale(1.5, 0.4, 0.4)
 rightUpperArm:rotate('z', -30)
 
-rightLowerArmNode = gr.node('rightLowerArmNode')
-rightUpperArmNode:add_child(rightLowerArmNode)
-rightLowerArmNode:scale(1.0 / 1.5, 1.0 / 0.4, 1.0 / 0.4)
-rightLowerArmNode:translate(2.0, -1.0, 0.0)
+spearNode = gr.node('spearNode')
+rightUpperArmNode:add_child(spearNode)
+spearNode:scale(1.0 / 1.5, 1.0 / 0.4, 1.0 / 0.4)
+spearNode:translate(2.0, -1.0, 0.0)
 
 
-rightLowerArmJoint = gr.joint('rightLowerArmJoint', {-40, 0, 10}, {0, 0, 0});
-rightLowerArmNode:add_child(rightLowerArmJoint)
+spearJoint = gr.joint('spearJoint', {-40, 0, 40}, {0, 0, 0});
+spearNode:add_child(spearJoint)
 
-rightLowerArm = gr.mesh('sphere', 'rightLowerArm')
-rightLowerArmJoint:add_child(rightLowerArm)
-rightLowerArm:set_material(white)
-rightLowerArm:translate(0.5, 0.0, 0.0)
-rightLowerArm:scale(1.4, 0.15, 0.15)
-rightLowerArm:rotate('z', -130)
+spear = gr.mesh('cube', 'spear')
+spearJoint:add_child(spear)
+spear:set_material(white)
+spear:translate(0.5, 0.0, 0.0)
+spear:scale(0.15, 3.5, 0.15)
 
 
 -----------------Left Arm-----------------
@@ -79,15 +78,30 @@ torso:add_child(leftUpperArmNode)
 leftUpperArmNode:scale(1.0, 0.5, 1.0)
 leftUpperArmNode:translate(-0.4, 0.75, 0.0)
 
-leftUpperArmJoint = gr.joint('leftUpperArmJoint', {-60, 0, 60}, {-30, 0, 30});
+leftUpperArmJoint = gr.joint('leftUpperArmJoint', {-45, 0, 45}, {-30, 0, 30});
 leftUpperArmNode:add_child(leftUpperArmJoint)
 
 leftUpperArm = gr.mesh('sphere', 'leftUpperArm')
 leftUpperArmJoint:add_child(leftUpperArm)
-leftUpperArm:set_material(white)
+leftUpperArm:set_material(green)
 leftUpperArm:translate(-0.6, 0.75, 0.0)
 leftUpperArm:scale(1.5, 0.4, 0.4)
 leftUpperArm:rotate('z', 30)
+
+shieldNode = gr.node('shieldNode')
+leftUpperArmNode:add_child(shieldNode)
+shieldNode:scale(1.0 / 1.5, 1.0 / 0.4, 1.0 / 0.4)
+shieldNode:translate(-2.0, -1.0, 0.0)
+
+shieldJoint = gr.joint('shieldJoint', {-40, 0, 40}, {0, 0, 0});
+shieldNode:add_child(shieldJoint)
+
+shield = gr.mesh('cube', 'shield')
+shieldJoint:add_child(shield)
+shield:set_material(white)
+shield:translate(-0.5, 0.0, 0.0)
+shield:scale(0.15, 3.5, 0.15)
+
 
 -----------------Right Leg-----------------
 rightUpperLegNode = gr.node('rightUpperLegNode')
@@ -100,10 +114,23 @@ rightUpperLegNode:add_child(rightUpperLegJoint)
 
 rightUpperLeg = gr.mesh('sphere', 'rightUpperLeg')
 rightUpperLegJoint:add_child(rightUpperLeg)
-rightUpperLeg:set_material(white)
+rightUpperLeg:set_material(green)
 rightUpperLeg:translate(0.4, -0.75, 0.0)
 rightUpperLeg:scale(0.5, 1.8, 0.5)
 rightUpperLeg:rotate('z', 10)
+
+rightShoeNode = gr.node('rightShoeNode')
+rightUpperLegNode:add_child(rightShoeNode)
+rightShoeNode:translate(0.8, -2.7, 0.0)
+
+rightShoeJoint = gr.joint('rightShoeJoint', {-30, 0, 30}, {0, 0, 0});
+rightShoeNode:add_child(rightShoeJoint)
+
+rightShoe = gr.mesh('cube', 'rightShoe')
+rightShoeJoint:add_child(rightShoe)
+rightShoe:set_material(green)
+rightShoe:translate(0.0, -0.5, 0.0)
+rightShoe:scale(0.8, 0.4, 5.0)
 
 -----------------Left Leg-----------------
 leftUpperLegNode = gr.node('leftUpperLegNode')
@@ -116,9 +143,23 @@ leftUpperLegNode:add_child(leftUpperLegJoint)
 
 leftUpperLeg = gr.mesh('sphere', 'leftUpperLeg')
 leftUpperLegJoint:add_child(leftUpperLeg)
-leftUpperLeg:set_material(white)
+leftUpperLeg:set_material(green)
 leftUpperLeg:translate(-0.4, -0.75, 0.0)
 leftUpperLeg:scale(0.5, 1.8, 0.5)
 leftUpperLeg:rotate('z', -10)
+
+leftShoeNode = gr.node('leftShoeNode')
+leftUpperLegNode:add_child(leftShoeNode)
+leftShoeNode:translate(-0.8, -2.7, 0.0)
+
+leftShoeJoint = gr.joint('leftShoeJoint', {-30, 0, 30}, {0, 0, 0});
+leftShoeNode:add_child(leftShoeJoint)
+
+leftShoe = gr.mesh('cube', 'leftShoe')
+leftShoeJoint:add_child(leftShoe)
+leftShoe:set_material(green)
+leftShoe:translate(0.0, -0.5, 0.0)
+leftShoe:scale(0.8, 0.4, 5.0)
+
 
 return rootNode;

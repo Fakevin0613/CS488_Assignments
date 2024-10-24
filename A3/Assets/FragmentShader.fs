@@ -1,6 +1,6 @@
 #version 330
 
-in vec3 vcolour;
+uniform vec3 pickingColour;
 uniform bool picking;
 
 out vec4 fragColour;
@@ -56,7 +56,7 @@ vec3 phongModel(vec3 fragPosition, vec3 fragNormal) {
 
 void main() {
 	if (picking) {
-		fragColour = vec4(vcolour, 1.0);
+		fragColour = vec4(pickingColour, 1.0);
 	}
 	else{
 		fragColour = vec4(phongModel(fs_in.position_ES, fs_in.normal_ES), 1.0);

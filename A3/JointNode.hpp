@@ -9,6 +9,9 @@ public:
 	JointNode(const std::string & name);
 	virtual ~JointNode();
 
+	float current_x, current_y;
+	bool isNeck = false;
+
 	void set_joint_x(double min, double init, double max);
 	void set_joint_y(double min, double init, double max);
 
@@ -16,6 +19,8 @@ public:
 		double min, init, max;
 	};
 
+	void rotateX(float angle);
+	void rotateY(float angle);
 
 	JointRange m_joint_x, m_joint_y;
 };
