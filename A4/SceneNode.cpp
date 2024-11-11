@@ -136,3 +136,25 @@ std::ostream & operator << (std::ostream & os, const SceneNode & node) {
 	os << "]\n";
 	return os;
 }
+
+bool SceneNode::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) {
+	Ray invRay(
+        glm::vec3(invtrans * glm::vec4(ray.origin, 1.0)),
+        glm::vec3(invtrans * glm::vec4(ray.direction, 0.0))
+    );
+	HitRecord invHitRecord;
+	bool hit = false;
+	for (SceneNode * child : children) {
+		if (child->intersect(invRay, interval, invHitRecord)) {
+			hit = true;
+			hitRecord = invHitRecord;
+			interval[1] = hitRecord.t;
+		}
+	}
+
+	if (hit) {
+		hitRecord.hitPoint = glm::vec3(trans * glm::vec4(hitRecord.hitPoint, 1.0));
+        hitRecord.normal = glm::mat3(glm::transpose(invtrans)) * hitRecord.normal;
+	}
+	return hit;
+}
