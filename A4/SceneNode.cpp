@@ -138,6 +138,10 @@ std::ostream & operator << (std::ostream & os, const SceneNode & node) {
 }
 
 bool SceneNode::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) {
+	if (glm::determinant(invtrans) == 0.0f) {
+        std::cerr << "Error: Non-invertible transformation matrix!" << std::endl;
+        return false;
+    }
 	Ray invRay(
         glm::vec3(invtrans * glm::vec4(ray.origin, 1.0)),
         glm::vec3(invtrans * glm::vec4(ray.direction, 0.0))
@@ -145,16 +149,16 @@ bool SceneNode::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) {
 	HitRecord invHitRecord;
 	bool hit = false;
 	for (SceneNode * child : children) {
-		if (child->intersect(invRay, interval, invHitRecord)) {
+		if (child && child->intersect(invRay, interval, invHitRecord) && invHitRecord.t < interval[1]) {
 			hit = true;
 			hitRecord = invHitRecord;
 			interval[1] = hitRecord.t;
 		}
 	}
-
 	if (hit) {
+		hitRecord.hit = true;
+		hitRecord.normal = glm::mat3(glm::transpose(invtrans)) * hitRecord.normal;
 		hitRecord.hitPoint = glm::vec3(trans * glm::vec4(hitRecord.hitPoint, 1.0));
-        hitRecord.normal = glm::mat3(glm::transpose(invtrans)) * hitRecord.normal;
 	}
 	return hit;
 }

@@ -48,12 +48,12 @@ Cube::~Cube()
 
 bool NonhierSphere::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
 {
-    glm::vec3 oc = ray.origin - m_pos;
+    glm::vec3 oc = ray.origin - center;
     float a = glm::dot(ray.direction, ray.direction);
     float b = 2.0f * glm::dot(oc, ray.direction);
-    float c = glm::dot(oc, oc) - m_radius * m_radius;
+    float c = glm::dot(oc, oc) - radius * radius;
     double roots[2];
-    size_t n_roots =  quadraticRoots(a, b, c, roots);
+    size_t n_roots = quadraticRoots(a, b, c, roots);
 
     float t = 0;
     if (n_roots == 0) {
@@ -74,11 +74,10 @@ bool NonhierSphere::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord
         return false;
     }
 
-    hitRecord.hit = true;
     hitRecord.t = t;
     hitRecord.hitPoint = ray.at(t);
-    hitRecord.normal = hitRecord.hitPoint - m_pos;
-
+    hitRecord.normal = hitRecord.hitPoint - center;
+    hitRecord.hit = true;
     return true;
 }
 
@@ -114,6 +113,8 @@ bool NonhierBox::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
     else if (hitRecord.t == t0.z || hitRecord.t == t1.z) hitRecord.normal = glm::vec3(0, 0, (hitRecord.t == t0.z ? -1 : 1));
 
     return true;
+
+    // return m_mesh->intersect(ray, interval, hitRecord);
 }
 
 NonhierBox::~NonhierBox()

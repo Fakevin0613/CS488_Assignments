@@ -31,28 +31,28 @@ public:
 class NonhierSphere : public Primitive {
 public:
   NonhierSphere(const glm::vec3& pos, double radius)
-    : m_pos(pos), m_radius(radius) 
+    : center(pos), radius(radius) 
   {
   }
   virtual ~NonhierSphere();
   virtual bool intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) override;
 
 private:
-  glm::vec3 m_pos;
-  double m_radius;
+  glm::vec3 center;
+  double radius;
 };
 
 class NonhierBox : public Primitive {
 public:
   NonhierBox(const glm::vec3& pos, double size)
-    : m_pos(pos), m_size(size)
+    : m_pos(pos), m_size(size) 
   {
   }
-  
   virtual ~NonhierBox();
   virtual bool intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) override;
 
 private:
   glm::vec3 m_pos;
   double m_size;
+  // Primitive *m_mesh;
 };

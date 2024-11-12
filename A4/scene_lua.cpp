@@ -346,8 +346,11 @@ int gr_render_cmd(lua_State* L)
     lua_pop(L, 1);
   }
 
+  const char* env = std::getenv("ENABLE_SUPER_SAMPLING");
+  bool enableSuperSampling = env && std::string(env) == "1";
+
 	Image im( width, height);
-	A4_Render(root->node, im, eye, view, up, fov, ambient, lights);
+	A4_Render(root->node, im, eye, view, up, fov, ambient, lights, enableSuperSampling);
     im.savePng( filename );
 
 	return 0;
