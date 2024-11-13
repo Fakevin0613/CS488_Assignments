@@ -4,12 +4,12 @@
 
 #include <glm/glm.hpp>
 #include "Ray.hpp"
-#include "HitRecord.hpp"
+#include "Photon.hpp"
 
 class Primitive {
 public:
   virtual ~Primitive();
-  virtual bool intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord);
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon);
 };
 
 class Sphere : public Primitive {
@@ -17,7 +17,7 @@ class Sphere : public Primitive {
 public:
   Sphere();
   virtual ~Sphere();
-  virtual bool intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) override;
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
 };
 
 class Cube : public Primitive {
@@ -25,7 +25,7 @@ class Cube : public Primitive {
 public:
   Cube();
   virtual ~Cube();
-  virtual bool intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) override;
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
 };
 
 class NonhierSphere : public Primitive {
@@ -35,7 +35,7 @@ public:
   {
   }
   virtual ~NonhierSphere();
-  virtual bool intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) override;
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
 
 private:
   glm::vec3 center;
@@ -49,7 +49,7 @@ public:
   {
   }
   virtual ~NonhierBox();
-  virtual bool intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) override;
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
 
 private:
   glm::vec3 m_pos;

@@ -49,7 +49,7 @@ std::ostream& operator<<(std::ostream& out, const Mesh& mesh)
   out << "}";
   return out;
 }
-bool Mesh::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) {
+bool Mesh::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
     bool hit = false;
 	float interval0 = interval[0];
 	float interval1 = interval[1];
@@ -63,6 +63,7 @@ bool Mesh::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) {
         const glm::vec3& v2 = m_vertices[tri.v3];
 
         // Möller-Trumbore triangle
+        // Inspired from https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection.html
         glm::vec3 edge1 = v1 - v0;
         glm::vec3 edge2 = v2 - v0;
 
@@ -95,9 +96,9 @@ bool Mesh::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) {
     }
 
     // Update the hit record
-	hitRecord.hit = true;
-    hitRecord.t = interval1;
-    hitRecord.normal = closest_normal;
-    hitRecord.hitPoint = ray.at(interval1);
+	photon.hit = true;
+    photon.t = interval1;
+    photon.normal = closest_normal;
+    photon.hitPoint = ray.at(interval1);
     return true;
 }

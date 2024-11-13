@@ -4,36 +4,36 @@
 
 #include "A4.hpp"
 #include "Ray.hpp"
-#include "HitRecord.hpp"
+#include "Photon.hpp"
 #include "GeometryNode.hpp"
 #include "PhongMaterial.hpp"
 using namespace std;
 
 glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 & eye, const glm::vec3 & ambient, const std::list<Light *> & lights) {
-	HitRecord record;
+	Photon photon;
     glm::vec3 color;
 	glm::vec2 interval(0.001f, 10000.0f);
-	if ( root->intersect( ray, interval, record ) ) {
-		record.normal = normalize(record.normal);
-		record.hitPoint += record.normal * 0.001f;
+	if ( root->intersect( ray, interval, photon ) ) {
+		photon.normal = normalize(photon.normal);
+		photon.hitPoint += photon.normal * 0.001f;
 
-		PhongMaterial *material = static_cast<PhongMaterial *>(record.material);
+		PhongMaterial *material = static_cast<PhongMaterial *>(photon.material);
 		// ambient
 		color += ambient * material->diffuse();
 
 		for (Light * light : lights) {
-			Ray shadowRay(record.hitPoint, light->position - record.hitPoint);
-			HitRecord shadowRay_record;
-			glm::vec2 tempInterval(0.001f, length(light->position - record.hitPoint));
+			Ray shadowRay(photon.hitPoint, light->position - photon.hitPoint);
+			Photon shadowRay_photon;
+			glm::vec2 tempInterval(0.001f, length(light->position - photon.hitPoint));
 			
-			if (root->intersect( shadowRay, tempInterval, shadowRay_record)) {
+			if (root->intersect( shadowRay, tempInterval, shadowRay_photon)) {
 				continue;  // skip this light when blocked
 			}
 
 			glm::vec3 L = normalize(shadowRay.direction);
-			glm::vec3 N = normalize(record.normal);
+			glm::vec3 N = normalize(photon.normal);
 			glm::vec3 R = normalize(2 * N * dot(N, L) - L);
-			glm::vec3 V = normalize(eye - record.hitPoint);
+			glm::vec3 V = normalize(eye - photon.hitPoint);
 			double r = length(shadowRay.direction);
 			double attenuation = 1.0f / ( light->falloff[0] + light->falloff[1] * r + light->falloff[2] * r * r );
 
@@ -111,8 +111,8 @@ void A4_Render(
 					for (int j = 0; j < sample; j++) {
 						double px = (2.0 * (x + (i + 0.5) / sample) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
 						double py = (1.0 - 2.0 * (y + (j + 0.5) / sample) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
-						const glm::vec3 RayDirection = glm::normalize(px * u_cam + py * v_cam - w_cam);
-						Ray ray = Ray(eye, RayDirection);
+						const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+						Ray ray = Ray(eye, primaryRay);
 						colour += traceRay(ray, root, eye, ambient, lights);
 					}
 				}
@@ -124,8 +124,8 @@ void A4_Render(
 				double px = (2.0 * (x + 0.5) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
 				double py = (1.0 - 2.0 * (y + 0.5) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
 
-				const glm::vec3 RayDirection = glm::normalize(px * u_cam + py * v_cam - w_cam);
-				Ray ray = Ray(eye, RayDirection);
+				const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+				Ray ray = Ray(eye, primaryRay);
 				colour += traceRay(ray, root, eye, ambient, lights);
 			}
 			colour = glm::clamp(colour, glm::vec3(0.0f), glm::vec3(1.0f));

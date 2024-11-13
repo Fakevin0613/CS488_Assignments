@@ -29,36 +29,28 @@ void GeometryNode::setMaterial( Material *mat )
 	m_material = mat;
 }
 
-bool GeometryNode::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
+bool GeometryNode::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 {
-	Ray invRay(
+	Ray transRay(
         glm::vec3(invtrans * glm::vec4(ray.origin, 1.0)),
         glm::vec3(invtrans * glm::vec4(ray.direction, 0.0))
     );
-
-	HitRecord invHitRecord;
-	invHitRecord.material = nullptr;
+	Photon curPhoton;
+	curPhoton.material = nullptr;
 	bool hit = false;
 	float near = interval[1];
 
-	if (m_primitive->intersect(invRay, interval, invHitRecord)) {
+	if (m_primitive->intersect(transRay, interval, curPhoton)) {
 		hit = true;
-		if ( invHitRecord.material == nullptr ) 
-			invHitRecord.material = m_material;
-		near = invHitRecord.t;
-		hitRecord = invHitRecord;
-	}
-
-	if( SceneNode::intersect(ray, interval, hitRecord) ) {
-		hit = true;
-		near = invHitRecord.t;
-		hitRecord = invHitRecord;
-		cout << "SceneNode hit" << endl;
+		if ( curPhoton.material == nullptr ) 
+			curPhoton.material = m_material;
+		near = curPhoton.t;
+		photon = curPhoton;
 	}
 
 	if (hit) {
-		hitRecord.hitPoint = glm::vec3(trans * glm::vec4(hitRecord.hitPoint, 1.0));
-        hitRecord.normal = glm::mat3(glm::transpose(invtrans)) * hitRecord.normal;
+		photon.hitPoint = glm::vec3(trans * glm::vec4(photon.hitPoint, 1.0));
+        photon.normal = glm::mat3(glm::transpose(invtrans)) * photon.normal;
 	}
 	return hit;
 }

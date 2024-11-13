@@ -10,7 +10,7 @@
 #include <string>
 #include <iostream>
 #include "Ray.hpp"
-#include "HitRecord.hpp"
+#include "Photon.hpp"
 
 enum class NodeType {
 	SceneNode,
@@ -55,7 +55,7 @@ public:
 	std::string m_name;
 	unsigned int m_nodeId;
 
-    virtual bool intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord);
+    virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon);
 
 private:
 	// The number of SceneNode instances.

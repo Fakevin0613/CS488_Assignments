@@ -6,7 +6,7 @@
 #include "Primitive.hpp"
 #include "Material.hpp"
 #include "Ray.hpp"
-#include "HitRecord.hpp"
+#include "Photon.hpp"
 
 class GeometryNode : public SceneNode {
 public:
@@ -18,5 +18,5 @@ public:
 	Material *m_material;
 	Primitive *m_primitive;
 
-	virtual bool intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) override;
+	virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
 };

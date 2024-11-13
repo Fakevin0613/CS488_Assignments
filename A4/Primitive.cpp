@@ -11,7 +11,7 @@ Primitive::~Primitive()
 {
 }
 
-bool Primitive::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
+bool Primitive::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 {
     return false;
 }
@@ -21,9 +21,9 @@ Sphere::Sphere()
     m_nonhierSphere = new NonhierSphere(glm::vec3(0), 1);
 }
 
-bool Sphere::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
+bool Sphere::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 {
-    return m_nonhierSphere->intersect(ray, interval, hitRecord);
+    return m_nonhierSphere->intersect(ray, interval, photon);
 }
 
 Sphere::~Sphere()
@@ -36,9 +36,9 @@ Cube::Cube()
     m_nonhierBox = new NonhierBox(glm::vec3(0), 1);
 }
 
-bool Cube::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
+bool Cube::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 {
-    return m_nonhierBox->intersect(ray, interval, hitRecord);
+    return m_nonhierBox->intersect(ray, interval, photon);
 }
 
 Cube::~Cube()
@@ -46,7 +46,7 @@ Cube::~Cube()
     delete m_nonhierBox;
 }
 
-bool NonhierSphere::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
+bool NonhierSphere::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 {
     glm::vec3 oc = ray.origin - center;
     float a = glm::dot(ray.direction, ray.direction);
@@ -57,7 +57,7 @@ bool NonhierSphere::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord
 
     float t = 0;
     if (n_roots == 0) {
-        hitRecord.hit = false;
+        photon.hit = false;
         return false;
     } else if (n_roots == 1){
         t = roots[0];
@@ -70,14 +70,14 @@ bool NonhierSphere::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord
     }
 
     if (t <= interval[0] || t >= interval[1]) {
-        hitRecord.hit = false;
+        photon.hit = false;
         return false;
     }
 
-    hitRecord.t = t;
-    hitRecord.hitPoint = ray.at(t);
-    hitRecord.normal = hitRecord.hitPoint - center;
-    hitRecord.hit = true;
+    photon.t = t;
+    photon.hitPoint = ray.at(t);
+    photon.normal = photon.hitPoint - center;
+    photon.hit = true;
     return true;
 }
 
@@ -85,7 +85,7 @@ NonhierSphere::~NonhierSphere()
 {
 }
 
-bool NonhierBox::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
+bool NonhierBox::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 {
     glm::vec3 minCornor = m_pos;
     glm::vec3 maxCornor = m_pos + glm::vec3(m_size);
@@ -100,17 +100,17 @@ bool NonhierBox::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
     float tFar = glm::min(tmax.x, glm::min(tmax.y, tmax.z));
 
     if (tNear > tFar || tFar < interval.x || tNear > interval.y) {
-        hitRecord.hit = false;
+        photon.hit = false;
         return false;  // No valid intersection
     }
 
-    hitRecord.hit = true;
-    hitRecord.t = tNear >= interval.x ? tNear : tFar;
-    hitRecord.hitPoint = ray.at(hitRecord.t);
+    photon.hit = true;
+    photon.t = tNear >= interval.x ? tNear : tFar;
+    photon.hitPoint = ray.at(photon.t);
 
-    if (hitRecord.t == t0.x || hitRecord.t == t1.x) hitRecord.normal = glm::vec3((hitRecord.t == t0.x ? -1 : 1), 0, 0);
-    else if (hitRecord.t == t0.y || hitRecord.t == t1.y) hitRecord.normal = glm::vec3(0, (hitRecord.t == t0.y ? -1 : 1), 0);
-    else if (hitRecord.t == t0.z || hitRecord.t == t1.z) hitRecord.normal = glm::vec3(0, 0, (hitRecord.t == t0.z ? -1 : 1));
+    if (photon.t == t0.x || photon.t == t1.x) photon.normal = glm::vec3((photon.t == t0.x ? -1 : 1), 0, 0);
+    else if (photon.t == t0.y || photon.t == t1.y) photon.normal = glm::vec3(0, (photon.t == t0.y ? -1 : 1), 0);
+    else if (photon.t == t0.z || photon.t == t1.z) photon.normal = glm::vec3(0, 0, (photon.t == t0.z ? -1 : 1));
 
     return true;
 }
