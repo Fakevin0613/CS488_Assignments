@@ -54,5 +54,4 @@ public:
 private:
   glm::vec3 m_pos;
   double m_size;
-  // Primitive *m_mesh;
 };

@@ -5,8 +5,9 @@
 
 #include <glm/ext.hpp>
 
-// #include "cs488-framework/ObjFileDecoder.hpp"
+#include "cs488-framework/ObjFileDecoder.hpp"
 #include "Mesh.hpp"
+using namespace std;
 
 Mesh::Mesh( const std::string& fname )
 	: m_vertices()
@@ -48,25 +49,26 @@ std::ostream& operator<<(std::ostream& out, const Mesh& mesh)
   out << "}";
   return out;
 }
-
 bool Mesh::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) {
-	bool hit = false;
-    float closestT = interval.y;
-
-    for (const auto& tri : m_faces) {
+    bool hit = false;
+	float interval0 = interval[0];
+	float interval1 = interval[1];
+	glm::vec3 closest_normal;
+	// cout << "mesh " << m_faces.size() << endl;
+	// cout << "vertices " << m_vertices.size() << endl;
+    for (auto tri : m_faces) {
         // Retrieve vertices of the triangle
         const glm::vec3& v0 = m_vertices[tri.v1];
         const glm::vec3& v1 = m_vertices[tri.v2];
         const glm::vec3& v2 = m_vertices[tri.v3];
 
-        // Möller-Trumbore triangle intersection
-        const float EPSILON = 1e-8;
+        // Möller-Trumbore triangle
         glm::vec3 edge1 = v1 - v0;
         glm::vec3 edge2 = v2 - v0;
 
         glm::vec3 h = glm::cross(ray.direction, edge2);
         float a = glm::dot(edge1, h);
-        if (a > -EPSILON && a < EPSILON) continue; // Ray is parallel to the triangle
+        if (a > -1e-8f && a < 1e-8f) continue; // Ray is parallel to the triangle
 
         float f = 1.0f / a;
         glm::vec3 s = ray.origin - v0;
@@ -78,21 +80,24 @@ bool Mesh::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord) {
         if (v < 0.0f || u + v > 1.0f) continue;
 
         float t = f * glm::dot(edge2, q);
-        if (t > EPSILON && t < closestT) { // Valid intersection
-            closestT = t;
+        if (t > interval0 && t < interval1) { // Valid intersection
             hit = true;
-
-            // Update HitRecord
-            hitRecord.t = t;
-            hitRecord.hitPoint = ray.at(t);
-            hitRecord.normal = glm::cross(edge1, edge2); // Triangle normal
-			hitRecord.material = nullptr;
-            // Ensure the normal points against the ray direction
-            if (glm::dot(hitRecord.normal, ray.direction) > 0) {
-                hitRecord.normal = -hitRecord.normal;
-            }
+            interval1 = t;
+            closest_normal = glm::normalize(glm::cross(edge1, edge2));
         }
     }
 
-    return hit;
+	if (!hit) return false;
+
+    // Ensure the normal points against the ray direction
+    if (glm::dot(ray.direction, closest_normal) > 0.0f) {
+        closest_normal = -closest_normal;
+    }
+
+    // Update the hit record
+	hitRecord.hit = true;
+    hitRecord.t = interval1;
+    hitRecord.normal = closest_normal;
+    hitRecord.hitPoint = ray.at(interval1);
+    return true;
 }

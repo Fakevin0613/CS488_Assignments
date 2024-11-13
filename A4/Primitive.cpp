@@ -113,8 +113,6 @@ bool NonhierBox::intersect(Ray& ray, glm::vec2 interval, HitRecord& hitRecord)
     else if (hitRecord.t == t0.z || hitRecord.t == t1.z) hitRecord.normal = glm::vec3(0, 0, (hitRecord.t == t0.z ? -1 : 1));
 
     return true;
-
-    // return m_mesh->intersect(ray, interval, hitRecord);
 }
 
 NonhierBox::~NonhierBox()

@@ -345,7 +345,7 @@ int gr_render_cmd(lua_State* L)
     lights.push_back(ldata->light);
     lua_pop(L, 1);
   }
-
+  // env variable to enable super sampling
   const char* env = std::getenv("ENABLE_SUPER_SAMPLING");
   bool enableSuperSampling = env && std::string(env) == "1";
 
