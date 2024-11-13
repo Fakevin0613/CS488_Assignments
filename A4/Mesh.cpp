@@ -27,6 +27,8 @@ Mesh::Mesh( const std::string& fname )
 			m_faces.push_back( Triangle( s1 - 1, s2 - 1, s3 - 1 ) );
 		}
 	}
+    // Compute the bounding box for the mesh
+    computeBoundingBox();
 }
 
 std::ostream& operator<<(std::ostream& out, const Mesh& mesh)
@@ -50,6 +52,14 @@ std::ostream& operator<<(std::ostream& out, const Mesh& mesh)
   return out;
 }
 bool Mesh::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
+    #ifdef RENDER_BOUNDING_VOLUMES
+    if (m_boundingBox.intersect(ray, interval, photon)) {
+        photon.hit = true;
+        photon.material = nullptr; // Indicates it's a bounding volume hit
+        return true;
+    }
+    #endif
+
     bool hit = false;
 	float interval0 = interval[0];
 	float interval1 = interval[1];
@@ -101,4 +111,15 @@ bool Mesh::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
     photon.normal = closest_normal;
     photon.hitPoint = ray.at(interval1);
     return true;
+}
+
+void Mesh::computeBoundingBox() {
+    if (m_vertices.empty()) return;
+    glm::vec3 minCorner = m_vertices[0];
+    glm::vec3 maxCorner = m_vertices[0];
+    for (auto vertex : m_vertices) {
+        minCorner = glm::min(minCorner, vertex);
+        maxCorner = glm::max(maxCorner, vertex);
+    }
+    m_boundingBox = BoundingBox(minCorner, maxCorner);
 }

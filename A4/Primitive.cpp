@@ -91,7 +91,7 @@ bool NonhierBox::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
     glm::vec3 maxCornor = m_pos + glm::vec3(m_size);
 
     glm::vec3 invDir = 1.0f / ray.direction;
-
+    // similar to bounding volume intersection
     glm::vec3 t0 = (minCornor - ray.origin) * invDir;
     glm::vec3 t1 = (maxCornor - ray.origin) * invDir;
     glm::vec3 tmin = glm::min(t0, t1);

@@ -20,7 +20,6 @@ glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 & eye, const glm::
 		PhongMaterial *material = static_cast<PhongMaterial *>(photon.material);
 		// ambient
 		color += ambient * material->diffuse();
-
 		for (Light * light : lights) {
 			Ray shadowRay(photon.hitPoint, light->position - photon.hitPoint);
 			Photon shadowRay_photon;
@@ -29,16 +28,15 @@ glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 & eye, const glm::
 			if (root->intersect( shadowRay, tempInterval, shadowRay_photon)) {
 				continue;  // skip this light when blocked
 			}
-
-			glm::vec3 L = normalize(shadowRay.direction);
 			glm::vec3 N = normalize(photon.normal);
-			glm::vec3 R = normalize(2 * N * dot(N, L) - L);
+			glm::vec3 S = normalize(shadowRay.direction);
+			glm::vec3 R = normalize(2 * N * dot(N, S) - S);
 			glm::vec3 V = normalize(eye - photon.hitPoint);
 			double r = length(shadowRay.direction);
-			double attenuation = 1.0f / ( light->falloff[0] + light->falloff[1] * r + light->falloff[2] * r * r );
+			double attenuation = 1.0f / ( light->falloff[0] + light->falloff[1]*r + light->falloff[2]*r*r );
 
 			// diffuse
-			color += glm::max(0.0f, dot(L, N)) * attenuation * material->diffuse() * light->colour;
+			color += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse() * light->colour;
 			// specular
 			color += pow(glm::max(0.0f, dot(R, V)), material->shininess()) * attenuation * material->specular() * light->colour;
 		}
@@ -106,7 +104,7 @@ void A4_Render(
 			glm::vec3 colour(0.0f);
 			if (enableSuperSampling) {
 				// with super sampling
-				int sample = 4;
+				int sample = 3;
 				for (int i = 0; i < sample; i++) {
 					for (int j = 0; j < sample; j++) {
 						double px = (2.0 * (x + (i + 0.5) / sample) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;

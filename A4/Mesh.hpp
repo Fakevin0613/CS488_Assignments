@@ -9,10 +9,13 @@
 #include <glm/glm.hpp>
 
 #include "Primitive.hpp"
+#include "BoundingBox.hpp"
 
 // Use this #define to selectively compile your code to render the
 // bounding boxes around your mesh objects. Uncomment this option
 // to turn it on.
+
+// #define RENDER_BOUNDING_VOLUMES
 struct Triangle
 {
 	size_t v1;
@@ -36,4 +39,8 @@ private:
 	std::vector<Triangle> m_faces;
 
     friend std::ostream& operator<<(std::ostream& out, const Mesh& mesh);
+
+	BoundingBox m_boundingBox;
+
+    void computeBoundingBox();
 };
