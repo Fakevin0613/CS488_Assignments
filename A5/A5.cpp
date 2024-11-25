@@ -7,48 +7,165 @@
 #include "Photon.hpp"
 #include "GeometryNode.hpp"
 #include "PhongMaterial.hpp"
+#include <cstdlib>
+#include <ctime>
+
 using namespace std;
 
-glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 & eye, const glm::vec3 & ambient, const std::list<Light *> & lights) {
-	Photon photon;
-    glm::vec3 color;
-	glm::vec2 interval(0.001f, 10000.0f);
-	if ( root->intersect( ray, interval, photon ) ) {
-		photon.normal = normalize(photon.normal);
-		photon.hitPoint += photon.normal * 0.001f;
+// Generate a random float between 0.0 and 1.0
+float rand_float() {
+    return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+}
 
-		PhongMaterial *material = static_cast<PhongMaterial *>(photon.material);
-		// ambient
-		color += ambient * material->diffuse();
-		for (Light * light : lights) {
-			Ray shadowRay(photon.hitPoint, light->position - photon.hitPoint);
-			Photon shadowRay_photon;
-			glm::vec2 tempInterval(0.001f, length(light->position - photon.hitPoint));
-			
-			if (root->intersect( shadowRay, tempInterval, shadowRay_photon)) {
-				continue;  // skip this light when blocked
-			}
-			glm::vec3 N = normalize(photon.normal);
-			glm::vec3 S = normalize(shadowRay.direction);
-			glm::vec3 R = normalize(2 * N * dot(N, S) - S);
-			glm::vec3 V = normalize(eye - photon.hitPoint);
-			double r = length(shadowRay.direction);
-			double attenuation = 1.0f / ( light->falloff[0] + light->falloff[1]*r + light->falloff[2]*r*r );
+glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 &eye, const glm::vec3 &ambient, const std::list<Light *> &lights, int depth = 3) {
+    Photon photon;
+    glm::vec3 color(0.0f);
+    glm::vec2 interval(0.001f, 10000.0f);
 
-			// diffuse
-			color += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse() * light->colour;
-			// specular
-			color += pow(glm::max(0.0f, dot(R, V)), material->shininess()) * attenuation * material->specular() * light->colour;
-		}
-		return color; 
-	} else {
-		// non-trivial background
-        glm::vec3 topColor = glm::vec3(0.6, 0.0, 0.2);  // pink for the top
-		glm::vec3 botColor = glm::vec3(0.2, 0.5, 1.0);   // purple for the bot
-		float t = 0.5f * (1.0f + glm::normalize(ray.direction).y);
-		glm::vec3 color = (1.0f - t) * botColor + t * topColor;
-		return color; 
-	}
+    bool glossyReflection = true;
+    bool glossyRefraction = false;
+
+    // Check for intersection
+    if (root->intersect(ray, interval, photon)) {
+        photon.normal = normalize(photon.normal);
+        photon.hitPoint += photon.normal * 0.001f; // Offset to prevent self-intersection
+
+        PhongMaterial *material = static_cast<PhongMaterial *>(photon.material);
+
+        // Ambient component
+        color += ambient * material->diffuse();
+
+        // Illumination (diffuse + specular)
+        for (Light *light : lights) {
+            Ray shadowRay(photon.hitPoint, light->position - photon.hitPoint);
+            Photon shadowRay_photon;
+            glm::vec2 tempInterval(0.001f, length(light->position - photon.hitPoint));
+
+            // Shadow test
+            if (root->intersect(shadowRay, tempInterval, shadowRay_photon)) {
+                continue; // Light is blocked
+            }
+
+            glm::vec3 N = normalize(photon.normal);
+            glm::vec3 S = normalize(shadowRay.direction);
+            glm::vec3 R = normalize(2.0f * N * dot(N, S) - S);
+            glm::vec3 V = normalize(eye - photon.hitPoint);
+            double r = length(shadowRay.direction);
+            double attenuation = 1.0f / (light->falloff[0] + light->falloff[1] * r + light->falloff[2] * r * r);
+
+            // Diffuse component
+            color += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse() * light->colour;
+            // Specular component
+            color += pow(glm::max(0.0f, dot(R, V)), material->shininess()) * attenuation * material->specular() * light->colour;
+        }
+
+        // Reflection and Refraction
+        if (depth > 0 && (material->reflection() > 0.0f || material->transparency() > 0.0f)) {
+            glm::vec3 reflectionColor(0.0f);
+            glm::vec3 refractionColor(0.0f);
+
+            // Reflection
+            glm::vec3 reflectDir = normalize(ray.direction - 2.0f * photon.normal * dot(photon.normal, ray.direction));
+
+            // Base perfect reflection
+            Ray reflectRay(photon.hitPoint + reflectDir * 0.001f, reflectDir);
+            reflectionColor += traceRay(reflectRay, root, eye, ambient, lights, depth - 1);
+
+            // Glossy Reflection
+            if (glossyReflection) {
+                int glossySamples = 8;
+                float glossySpread = 0.2f;
+                glm::vec3 glossyColor(0.0f);
+
+                // Generate an orthonormal basis for perturbation
+                glm::vec3 u = normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), reflectDir));
+                if (glm::length(u) < 1e-6f) {
+                    u = normalize(glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), reflectDir));
+                }
+                glm::vec3 v = normalize(glm::cross(reflectDir, u));
+
+                // Sample multiple rays for glossy effect
+                for (int i = 0; i < glossySamples; ++i) {
+                    // Generate random offsets in a disk
+                    float r = glossySpread * sqrt(rand_float()); // Radial distance
+                    float theta = rand_float() * 2.0f * M_PI;    // Angle in polar coordinates
+                    float offsetU = r * cos(theta);
+                    float offsetV = r * sin(theta);
+
+                    // Perturb the reflection direction
+                    glm::vec3 perturbedDir = normalize(reflectDir + offsetU * u + offsetV * v);
+
+                    // Trace the perturbed ray
+                    Ray glossyRay(photon.hitPoint + perturbedDir * 0.001f, perturbedDir);
+                    glossyColor += traceRay(glossyRay, root, eye, ambient, lights, depth - 1);
+                }
+
+                // Average the glossy rays
+                reflectionColor /= float(glossySamples);
+                reflectionColor += glossyColor / float(glossySamples);
+            }
+
+            // Refraction
+            double eta = material->refraction();
+            glm::vec3 I = normalize(ray.direction);
+            glm::vec3 N = normalize(photon.normal);
+            float cos_theta = glm::dot(-I, N);
+
+            // Handle inside-to-outside transition
+            if (cos_theta < 0.0f) {
+                N = -N;
+                eta = 1.0 / eta;
+                cos_theta = -cos_theta;
+            }
+
+            float discriminant = 1.0 - eta * eta * (1.0 - cos_theta * cos_theta);
+            if (discriminant > 0.0f) {
+                glm::vec3 refractionDir = normalize(eta * I + (eta * cos_theta - sqrt(discriminant)) * N);
+                Ray refractionRay(photon.hitPoint - N * 0.001f, refractionDir);
+                refractionColor += traceRay(refractionRay, root, eye, ambient, lights, depth - 1);
+
+                if (glossyRefraction) {
+                    int glossySamples = 4; // Smooth glossy refraction
+                    float glossySpread = 0.05f;
+                    glm::vec3 glossyColor(0.0f);
+
+                    // Create orthonormal basis for glossy perturbations
+                    glm::vec3 u = normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), refractionDir));
+                    if (glm::length(u) < 1e-6f) {
+                        u = normalize(glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), refractionDir));
+                    }
+                    glm::vec3 v = normalize(glm::cross(refractionDir, u));
+
+                    // Sample glossy rays
+                    for (int i = 0; i < glossySamples; ++i) {
+                        float r = glossySpread * sqrt(rand_float());
+                        float theta = rand_float() * 2.0f * M_PI;
+                        float offsetU = r * cos(theta);
+                        float offsetV = r * sin(theta);
+
+                        glm::vec3 perturbedDir = normalize(refractionDir + offsetU * u + offsetV * v);
+                        Ray glossyRay(photon.hitPoint - N * 0.001f, perturbedDir);
+                        glossyColor += traceRay(glossyRay, root, eye, ambient, lights, depth - 1);
+                    }
+                    refractionColor /= float(glossySamples);
+                    refractionColor += glossyColor / float(glossySamples);
+                }
+            }
+
+            // Combine reflection, refraction, and diffuse components
+            float reflectivity = material->reflection();
+            float transparency = material->transparency();
+            color = 1.0f / (1.0f + reflectivity + transparency) * color + reflectivity / (1.0f + reflectivity + transparency) * reflectionColor + transparency / (1.0f + reflectivity + transparency) * refractionColor;
+        }
+
+        return color;
+    } else {
+        // Background color gradient
+        glm::vec3 topColor = glm::vec3(0.6, 0.0, 0.2); // Pink for the top
+        glm::vec3 botColor = glm::vec3(0.2, 0.5, 1.0); // Purple for the bottom
+        float t = 0.5f * (1.0f + glm::normalize(ray.direction).y);
+        return (1.0f - t) * botColor + t * topColor;
+    }
 }
 
 void A5_Render(
