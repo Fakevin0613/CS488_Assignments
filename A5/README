@@ -6,11 +6,7 @@ make
 ```
 
 ## Manual
+`export ENABLE_STOCHASTIC_SAMPLING=1`
 
 ### Notes
 
-1. The extra feature is supersampling. Images that included "-supersampling" are rendered with supersampling on. Otherwise, supersampling is off. To enable supersampling, you have to set environment variable ENABLE_SUPER_SAMPLING=1. For example `export ENABLE_SUPER_SAMPLING=1` in the bash console to turn it on; `export ENABLE_SUPER_SAMPLING=0` in the bash console to turn it off
-2. All generated images are put in the `/image` folder (including the screenshot.png).
-3. Some lua files are modified and added a prefix of “Assets/“ to the obj, so that scene can be made when outside the Asset directory.
-4. Some thoughts and algorithm are inspired after reading briefly from https://raytracing.github.io/books/RayTracingInOneWeekend.html#rays,asimplecamera,andbackground/therayclass and the textbook.
-5. `sample.lua` is put under `/Asset` folder

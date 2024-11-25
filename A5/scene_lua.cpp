@@ -346,11 +346,11 @@ int gr_render_cmd(lua_State* L)
     lua_pop(L, 1);
   }
   // env variable to enable super sampling
-  const char* env = std::getenv("ENABLE_SUPER_SAMPLING");
-  bool enableSuperSampling = env && std::string(env) == "1";
+  const char* env = std::getenv("ENABLE_STOCHASTIC_SAMPLING");
+  bool enableStochasticSampling = env && std::string(env) == "1";
 
 	Image im( width, height);
-	A5_Render(root->node, im, eye, view, up, fov, ambient, lights, enableSuperSampling);
+	A5_Render(root->node, im, eye, view, up, fov, ambient, lights, enableStochasticSampling);
     im.savePng( filename );
 
 	return 0;

@@ -24,5 +24,5 @@ void A5_Render(
 		// Lighting parameters
 		const glm::vec3 & ambient,
 		const std::list<Light *> & lights,
-		bool enableSuperSampling
+		bool enableStochasticSampling
 );

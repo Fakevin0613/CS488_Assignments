@@ -22,8 +22,11 @@ glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 &eye, const glm::v
     glm::vec3 color(0.0f);
     glm::vec2 interval(0.001f, 10000.0f);
 
-    bool glossyReflection = true;
+    bool reflection = true;
+    bool glossyReflection = false;
+    bool refraction = true;
     bool glossyRefraction = false;
+    bool softShadow = true;
 
     // Check for intersection
     if (root->intersect(ray, interval, photon)) {
@@ -35,28 +38,71 @@ glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 &eye, const glm::v
         // Ambient component
         color += ambient * material->diffuse();
 
-        // Illumination (diffuse + specular)
-        for (Light *light : lights) {
-            Ray shadowRay(photon.hitPoint, light->position - photon.hitPoint);
-            Photon shadowRay_photon;
-            glm::vec2 tempInterval(0.001f, length(light->position - photon.hitPoint));
+        if (softShadow){
+            for (Light *light : lights) {
+            // Cast multiple shadow rays for soft shadowing
+            int shadowSamples = 32;  // Number of shadow rays (adjustable for quality vs. performance)
+            float lightRadius = 20.0f; // Radius of area light (define in Light class)
+            glm::vec3 lightColor(0.0f);
 
-            // Shadow test
-            if (root->intersect(shadowRay, tempInterval, shadowRay_photon)) {
-                continue; // Light is blocked
+            for (int i = 0; i < shadowSamples; i++) {
+                glm::vec3 lightPos = light->position;
+                glm::vec3 u = glm::normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), ray.direction));
+                if (glm::length(u) < 1e-6f){
+                    u = glm::normalize(glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), ray.direction));
+                }
+                glm::vec3 v = glm::normalize(glm::cross(ray.direction, u));
+                float randU = lightRadius * sqrt(rand_float()) * glm::cos(rand_float() * 2.0f * M_PI);
+                float randV = lightRadius * sqrt(rand_float()) * glm::sin(rand_float() * 2.0f * M_PI);
+
+                lightPos += randU * u + randV * v; // Perturbed light position for soft shadow sampling
+
+                // Shadow ray
+                Ray shadowRay(photon.hitPoint, lightPos - photon.hitPoint);
+                Photon shadowRay_photon;
+                glm::vec2 tempInterval(0.001f, length(lightPos - photon.hitPoint));
+
+                // Check if shadow ray is blocked
+                if (!root->intersect(shadowRay, tempInterval, shadowRay_photon)) {
+                    glm::vec3 N = normalize(photon.normal);
+                    glm::vec3 S = normalize(shadowRay.direction);
+                    glm::vec3 R = normalize(2.0f * N * dot(N, S) - S);
+                    glm::vec3 V = normalize(eye - photon.hitPoint);
+                    double r = length(shadowRay.direction);
+                    double attenuation = 1.0f / (light->falloff[0] + light->falloff[1] * r + light->falloff[2] * r * r);
+
+                    // Diffuse component
+                    lightColor += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse() * light->colour;
+                    // Specular component
+                    lightColor += pow(glm::max(0.0f, dot(R, V)), material->shininess()) * attenuation * material->specular() * light->colour;
+                }
             }
+            lightColor /= float(shadowSamples);
+            color += lightColor;
+        }
+        }
+        else{
+            // Illumination (diffuse + specular)
+            for (Light *light : lights) {
+                Ray shadowRay(photon.hitPoint, light->position - photon.hitPoint);
+                Photon shadowRay_photon;
+                glm::vec2 tempInterval(0.001f, length(light->position - photon.hitPoint));
 
-            glm::vec3 N = normalize(photon.normal);
-            glm::vec3 S = normalize(shadowRay.direction);
-            glm::vec3 R = normalize(2.0f * N * dot(N, S) - S);
-            glm::vec3 V = normalize(eye - photon.hitPoint);
-            double r = length(shadowRay.direction);
-            double attenuation = 1.0f / (light->falloff[0] + light->falloff[1] * r + light->falloff[2] * r * r);
+                // Shadow test
+                if (!root->intersect(shadowRay, tempInterval, shadowRay_photon)) {
+                    glm::vec3 N = normalize(photon.normal);
+                    glm::vec3 S = normalize(shadowRay.direction);
+                    glm::vec3 R = normalize(2.0f * N * dot(N, S) - S);
+                    glm::vec3 V = normalize(eye - photon.hitPoint);
+                    double r = length(shadowRay.direction);
+                    double attenuation = 1.0f / (light->falloff[0] + light->falloff[1] * r + light->falloff[2] * r * r);
 
-            // Diffuse component
-            color += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse() * light->colour;
-            // Specular component
-            color += pow(glm::max(0.0f, dot(R, V)), material->shininess()) * attenuation * material->specular() * light->colour;
+                    // Diffuse component
+                    color += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse() * light->colour;
+                    // Specular component
+                    color += pow(glm::max(0.0f, dot(R, V)), material->shininess()) * attenuation * material->specular() * light->colour;
+                }
+            }
         }
 
         // Reflection and Refraction
@@ -65,96 +111,101 @@ glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 &eye, const glm::v
             glm::vec3 refractionColor(0.0f);
 
             // Reflection
-            glm::vec3 reflectDir = normalize(ray.direction - 2.0f * photon.normal * dot(photon.normal, ray.direction));
-
-            // Base perfect reflection
-            Ray reflectRay(photon.hitPoint + reflectDir * 0.001f, reflectDir);
-            reflectionColor += traceRay(reflectRay, root, eye, ambient, lights, depth - 1);
-
-            // Glossy Reflection
-            if (glossyReflection) {
-                int glossySamples = 8;
-                float glossySpread = 0.2f;
-                glm::vec3 glossyColor(0.0f);
-
-                // Generate an orthonormal basis for perturbation
-                glm::vec3 u = normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), reflectDir));
-                if (glm::length(u) < 1e-6f) {
-                    u = normalize(glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), reflectDir));
-                }
-                glm::vec3 v = normalize(glm::cross(reflectDir, u));
-
-                // Sample multiple rays for glossy effect
-                for (int i = 0; i < glossySamples; ++i) {
-                    // Generate random offsets in a disk
-                    float r = glossySpread * sqrt(rand_float()); // Radial distance
-                    float theta = rand_float() * 2.0f * M_PI;    // Angle in polar coordinates
-                    float offsetU = r * cos(theta);
-                    float offsetV = r * sin(theta);
-
-                    // Perturb the reflection direction
-                    glm::vec3 perturbedDir = normalize(reflectDir + offsetU * u + offsetV * v);
-
-                    // Trace the perturbed ray
-                    Ray glossyRay(photon.hitPoint + perturbedDir * 0.001f, perturbedDir);
-                    glossyColor += traceRay(glossyRay, root, eye, ambient, lights, depth - 1);
-                }
-
-                // Average the glossy rays
-                reflectionColor /= float(glossySamples);
-                reflectionColor += glossyColor / float(glossySamples);
-            }
-
-            // Refraction
-            double eta = material->refraction();
-            glm::vec3 I = normalize(ray.direction);
-            glm::vec3 N = normalize(photon.normal);
-            float cos_theta = glm::dot(-I, N);
-
-            // Handle inside-to-outside transition
-            if (cos_theta < 0.0f) {
-                N = -N;
-                eta = 1.0 / eta;
-                cos_theta = -cos_theta;
-            }
-
-            float discriminant = 1.0 - eta * eta * (1.0 - cos_theta * cos_theta);
-            if (discriminant > 0.0f) {
-                glm::vec3 refractionDir = normalize(eta * I + (eta * cos_theta - sqrt(discriminant)) * N);
-                Ray refractionRay(photon.hitPoint - N * 0.001f, refractionDir);
-                refractionColor += traceRay(refractionRay, root, eye, ambient, lights, depth - 1);
-
-                if (glossyRefraction) {
-                    int glossySamples = 4; // Smooth glossy refraction
-                    float glossySpread = 0.05f;
+            if (reflection) {
+                // Basic reflection
+                glm::vec3 reflectDir = normalize(ray.direction - 2.0f * photon.normal * dot(photon.normal, ray.direction));
+                Ray reflectRay(photon.hitPoint + reflectDir * 0.001f, reflectDir);
+                reflectionColor += traceRay(reflectRay, root, eye, ambient, lights, depth - 1);
+                // Glossy Reflection
+                if (glossyReflection) {
+                    int glossySamples = 8;
+                    float glossySpread = 0.2f;
                     glm::vec3 glossyColor(0.0f);
 
-                    // Create orthonormal basis for glossy perturbations
-                    glm::vec3 u = normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), refractionDir));
+                    // Generate an orthonormal basis for perturbation
+                    glm::vec3 u = normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), reflectDir));
                     if (glm::length(u) < 1e-6f) {
-                        u = normalize(glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), refractionDir));
+                        u = normalize(glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), reflectDir));
                     }
-                    glm::vec3 v = normalize(glm::cross(refractionDir, u));
+                    glm::vec3 v = normalize(glm::cross(reflectDir, u));
 
-                    // Sample glossy rays
+                    // Sample multiple rays for glossy effect
                     for (int i = 0; i < glossySamples; ++i) {
-                        float r = glossySpread * sqrt(rand_float());
-                        float theta = rand_float() * 2.0f * M_PI;
+                        // Generate random offsets in a disk
+                        float r = glossySpread * sqrt(rand_float()); // Radial distance
+                        float theta = rand_float() * 2.0f * M_PI;    // Angle in polar coordinates
                         float offsetU = r * cos(theta);
                         float offsetV = r * sin(theta);
 
-                        glm::vec3 perturbedDir = normalize(refractionDir + offsetU * u + offsetV * v);
-                        Ray glossyRay(photon.hitPoint - N * 0.001f, perturbedDir);
+                        // Perturb the reflection direction
+                        glm::vec3 perturbedDir = normalize(reflectDir + offsetU * u + offsetV * v);
+
+                        // Trace the perturbed ray
+                        Ray glossyRay(photon.hitPoint + perturbedDir * 0.001f, perturbedDir);
                         glossyColor += traceRay(glossyRay, root, eye, ambient, lights, depth - 1);
                     }
-                    refractionColor /= float(glossySamples);
-                    refractionColor += glossyColor / float(glossySamples);
+
+                    // Average the glossy rays
+                    reflectionColor /= float(glossySamples);
+                    reflectionColor += glossyColor / float(glossySamples);
                 }
             }
 
+            
+
+            // Refraction
+            if (refraction) {
+                double eta = material->refraction();
+                glm::vec3 I = normalize(ray.direction);
+                glm::vec3 N = normalize(photon.normal);
+                float cos_theta = glm::dot(-I, N);
+
+                // Handle inside-to-outside transition
+                if (cos_theta < 0.0f) {
+                    N = -N;
+                    eta = 1.0 / eta;
+                    cos_theta = -cos_theta;
+                }
+
+                float discriminant = 1.0 - eta * eta * (1.0 - cos_theta * cos_theta);
+                if (discriminant > 0.0f) {
+                    glm::vec3 refractionDir = normalize(eta * I + (eta * cos_theta - sqrt(discriminant)) * N);
+                    Ray refractionRay(photon.hitPoint - N * 0.001f, refractionDir);
+                    refractionColor += traceRay(refractionRay, root, eye, ambient, lights, depth - 1);
+
+                    if (glossyRefraction) {
+                        int glossySamples = 4; // Smooth glossy refraction
+                        float glossySpread = 0.05f;
+                        glm::vec3 glossyColor(0.0f);
+
+                        // Create orthonormal basis for glossy perturbations
+                        glm::vec3 u = normalize(glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), refractionDir));
+                        if (glm::length(u) < 1e-6f) {
+                            u = normalize(glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), refractionDir));
+                        }
+                        glm::vec3 v = normalize(glm::cross(refractionDir, u));
+
+                        // Sample glossy rays
+                        for (int i = 0; i < glossySamples; ++i) {
+                            float r = glossySpread * sqrt(rand_float());
+                            float theta = rand_float() * 2.0f * M_PI;
+                            float offsetU = r * cos(theta);
+                            float offsetV = r * sin(theta);
+
+                            glm::vec3 perturbedDir = normalize(refractionDir + offsetU * u + offsetV * v);
+                            Ray glossyRay(photon.hitPoint - N * 0.001f, perturbedDir);
+                            glossyColor += traceRay(glossyRay, root, eye, ambient, lights, depth - 1);
+                        }
+                        refractionColor /= float(glossySamples);
+                        refractionColor += glossyColor / float(glossySamples);
+                    }
+                }
+            }
+            
+
             // Combine reflection, refraction, and diffuse components
-            float reflectivity = material->reflection();
-            float transparency = material->transparency();
+            float reflectivity = reflection? material->reflection() : 0.0f;
+            float transparency = refraction? material->transparency() : 0.0f;
             color = 1.0f / (1.0f + reflectivity + transparency) * color + reflectivity / (1.0f + reflectivity + transparency) * reflectionColor + transparency / (1.0f + reflectivity + transparency) * refractionColor;
         }
 
@@ -184,7 +235,7 @@ void A5_Render(
 		// Lighting parameters  
 		const glm::vec3 & ambient,
 		const std::list<Light *> & lights,
-		bool enableSuperSampling
+		bool enableStochasticSampling
 ) {
 
   // Fill in raytracing code here...  
@@ -215,27 +266,45 @@ void A5_Render(
     glm::vec3 w_cam = glm::normalize(-view);           // Forward direction
     glm::vec3 u_cam = glm::normalize(glm::cross(up, w_cam)); // Right direction
     glm::vec3 v_cam = glm::cross(w_cam, u_cam);        // Up direction
-	std::cout << "Super Sampling: " << enableSuperSampling << std::endl;
+	std::cout << "Stochastic Sampling: " << enableStochasticSampling << std::endl;
 	for (uint y = 0; y < h; ++y) {
 		for (uint x = 0; x < w; ++x) {
 			glm::vec3 colour(0.0f);
-			if (enableSuperSampling) {
+			if (enableStochasticSampling) {
 				// with super sampling
-				int sample = 3;
-				for (int i = 0; i < sample; i++) {
-					for (int j = 0; j < sample; j++) {
-						double px = (2.0 * (x + (i + 0.5) / sample) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
-						double py = (1.0 - 2.0 * (y + (j + 0.5) / sample) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
-						const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
-						Ray ray = Ray(eye, primaryRay);
-						colour += traceRay(ray, root, eye, ambient, lights);
-					}
-				}
+				int sample = 16;
+
+                // Super sampling
+				// for (int i = 0; i < sample; i++) {
+				// 	for (int j = 0; j < sample; j++) {
+				// 		double px = (2.0 * (x + (i + 0.5) / sample) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
+				// 		double py = (1.0 - 2.0 * (y + (j + 0.5) / sample) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
+				// 		const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+				// 		Ray ray = Ray(eye, primaryRay);
+				// 		colour += traceRay(ray, root, eye, ambient, lights);
+				// 	}
+				// }
+
+                // Stockastic sampling
+                for (int i = 0; i < sample; i++) {
+                    // Generate random offsets within the pixel
+                    double randX = (rand_float() - 0.5) * 0.5;
+                    double randY = (rand_float() - 0.5) * 0.5;
+
+                    double px = (2.0 * (x + 0.5 + randX) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
+                    double py = (1.0 - 2.0 * (y + 0.5 + randY) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
+
+                    const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+                    Ray ray = Ray(eye, primaryRay);
+
+                    // Accumulate color from random sample
+                    colour += traceRay(ray, root, eye, ambient, lights);
+                }
 				// Average colour over samples
-    			colour /= static_cast<double>(sample * sample);
+    			colour /= static_cast<double>(sample);
 			}
 			else{
-				// without super sampling
+				// without anti-aliasing
 				double px = (2.0 * (x + 0.5) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
 				double py = (1.0 - 2.0 * (y + 0.5) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
 
