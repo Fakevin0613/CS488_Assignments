@@ -160,6 +160,62 @@ int gr_joint_cmd(lua_State* L)
   return 1;
 }
 
+// Create a Cylinder node
+extern "C"
+int gr_cylinder_cmd(lua_State* L)
+{
+  GRLUA_DEBUG_CALL;
+  
+  gr_node_ud* data = (gr_node_ud*)lua_newuserdata(L, sizeof(gr_node_ud));
+  data->node = 0;
+
+  const char* name = luaL_checkstring(L, 1);
+
+  glm::vec3 center;
+  get_tuple(L, 2, &center[0], 3);
+
+  glm::vec3 axis;
+  get_tuple(L, 3, &axis[0], 3);
+
+  double radius = luaL_checknumber(L, 4);
+  double height = luaL_checknumber(L, 5);
+
+  data->node = new GeometryNode(name, new Cylinder(center, axis, radius, height));
+
+  luaL_getmetatable(L, "gr.node");
+  lua_setmetatable(L, -2);
+
+  return 1;
+}
+
+// Create a Cone node
+extern "C"
+int gr_cone_cmd(lua_State* L)
+{
+  GRLUA_DEBUG_CALL;
+  
+  gr_node_ud* data = (gr_node_ud*)lua_newuserdata(L, sizeof(gr_node_ud));
+  data->node = 0;
+
+  const char* name = luaL_checkstring(L, 1);
+
+  glm::vec3 center;
+  get_tuple(L, 2, &center[0], 3);
+
+  glm::vec3 axis;
+  get_tuple(L, 3, &axis[0], 3);
+
+  double radius = luaL_checknumber(L, 4);
+  double height = luaL_checknumber(L, 5);
+
+  data->node = new GeometryNode(name, new Cone(center, axis, radius, height));
+
+  luaL_getmetatable(L, "gr.node");
+  lua_setmetatable(L, -2);
+
+  return 1;
+}
+
 // Create a Sphere node
 extern "C"
 int gr_sphere_cmd(lua_State* L)
@@ -536,6 +592,8 @@ static const luaL_Reg grlib_functions[] = {
   {"sphere", gr_sphere_cmd},
   {"joint", gr_joint_cmd},
   {"material", gr_material_cmd},
+  {"cylinder", gr_cylinder_cmd},
+  {"cone", gr_cone_cmd},
   // New for assignment 4
   {"cube", gr_cube_cmd},
   {"nh_sphere", gr_nh_sphere_cmd},

@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include "Ray.hpp"
 #include "Photon.hpp"
+#include <cmath>
 
 class Primitive {
 public:
@@ -54,4 +55,34 @@ public:
 private:
   glm::vec3 m_pos;
   double m_size;
+};
+
+class Cylinder : public Primitive {
+public:
+  Cylinder(glm::vec3& center, glm::vec3& axis, double radius, double height)
+    : center(center), axis(glm::normalize(axis)), radius(radius), height(height) 
+  {
+  }
+  virtual ~Cylinder();
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
+private:
+  glm::vec3 center;
+  glm::vec3 axis;
+  double radius;
+  double height;
+};
+
+class Cone : public Primitive {
+public:
+  Cone(glm::vec3& center, glm::vec3& axis, double angle, double height)
+    : center(center), axis(glm::normalize(axis)), angle(angle), height(height) 
+  {
+  }
+  virtual ~Cone();
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
+private:
+  glm::vec3 center;
+  glm::vec3 axis;
+  double angle;
+  double height;
 };

@@ -118,3 +118,96 @@ bool NonhierBox::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 NonhierBox::~NonhierBox()
 {
 }
+
+bool Cylinder::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
+{
+    glm::vec3 oc = ray.origin - center;
+
+    glm::vec3 d_perp = ray.direction - glm::dot(ray.direction, axis) * axis;
+    glm::vec3 oc_perp = oc - glm::dot(oc, axis) * axis;
+
+    double a = glm::dot(d_perp, d_perp);
+    double b = 2.0 * glm::dot(d_perp, oc_perp);
+    double c = glm::dot(oc_perp, oc_perp) - radius * radius;
+
+    double discriminant = b * b - 4 * a * c;
+    if (discriminant < 0) return false;
+
+    double sqrt_discriminant = sqrt(discriminant);
+    double t0 = (-b - sqrt_discriminant) / (2.0 * a);
+    double t1 = (-b + sqrt_discriminant) / (2.0 * a);
+
+    // Check for valid intersections within the interval
+    for (double t : {t0, t1}) {
+        if (t < interval.x || t > interval.y) continue;
+        glm::vec3 hit_point = ray.origin + t * ray.direction;
+        double projection = glm::dot(hit_point - center, axis);
+
+        if (projection >= 0 && projection <= height) {
+            photon.t = t;
+            photon.hit = true;
+            photon.hitPoint = hit_point;
+            photon.normal = glm::normalize(hit_point - center - projection * axis);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+Cylinder::~Cylinder()
+{
+}
+
+bool Cone::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
+{
+    // Cosine squared of the angle for simplification
+    double cos_theta = cos(angle);
+    double cos2 = cos_theta * cos_theta;
+
+    glm::vec3 v_apex_ray = ray.origin - center;
+    double axis_dot_dir = glm::dot(ray.direction, axis);
+    double axis_dot_v = glm::dot(v_apex_ray, axis);
+
+    // Coefficients for the quadratic equation
+    glm::vec3 d_perp = ray.direction - axis_dot_dir * axis;
+    glm::vec3 v_perp = v_apex_ray - axis_dot_v * axis;
+
+    double a = glm::dot(d_perp, d_perp) - cos2 * (axis_dot_dir * axis_dot_dir);
+    double b = 2.0 * (glm::dot(d_perp, v_perp) - cos2 * axis_dot_dir * axis_dot_v);
+    double c = glm::dot(v_perp, v_perp) - cos2 * (axis_dot_v * axis_dot_v);
+
+    // Solve the quadratic equation
+    double discriminant = b * b - 4 * a * c;
+    if (discriminant < 0) return false;  // No intersection
+
+    double sqrt_discriminant = sqrt(discriminant);
+    double t0 = (-b - sqrt_discriminant) / (2.0 * a);
+    double t1 = (-b + sqrt_discriminant) / (2.0 * a);
+
+    // Check valid intersections within the interval
+    for (double t : {t0, t1}) {
+        if (t < interval.x || t > interval.y) continue;
+
+        glm::vec3 hit_point = ray.origin + t * ray.direction;
+        double projection = glm::dot(hit_point - center, axis);
+
+        // Ensure the intersection is within the finite cone height
+        if (projection >= 0 && projection <= height) {
+            photon.t = t;
+            photon.hitPoint = hit_point;
+
+            // Compute the normal at the hit point
+            glm::vec3 normal = glm::normalize(hit_point - center - projection * tan(angle) * axis);
+            photon.normal = glm::normalize(normal);
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+Cone::~Cone()
+{
+}
