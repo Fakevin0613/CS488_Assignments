@@ -6,6 +6,7 @@
 #include "Ray.hpp"
 #include "Photon.hpp"
 #include <cmath>
+#include <vector>
 
 class Primitive {
 public:
@@ -85,4 +86,18 @@ private:
   glm::vec3 axis;
   double angle;
   double height;
+};
+
+class Torus : public Primitive {
+public:
+  Torus(glm::vec3& center, double minorRadius, double majorRadius)
+    : center(center), minorRadius(minorRadius), majorRadius(majorRadius) 
+  {
+  }
+  virtual ~Torus();
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
+private:
+  glm::vec3 center;
+  double minorRadius;
+  double majorRadius;
 };

@@ -211,3 +211,114 @@ bool Cone::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 Cone::~Cone()
 {
 }
+
+// Torus intersection
+// The quartic equation provided in polyroot.cpp is not reliable
+// Therefore, we use the idea from https://www.shadertoy.com/view/4sBGDy
+bool Torus::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
+    glm::dvec3 ro = ray.origin - center;
+    glm::dvec3 rd = ray.direction;
+
+    double majorRadius2 = majorRadius * majorRadius;
+    double minorRadius2 = minorRadius * minorRadius;
+
+    // Calculate coefficients for the quartic equation
+    double m = glm::dot(ro, ro);  // |ro|^2
+    double n = glm::dot(ro, rd);  // ro · rd
+
+    double k = (m - minorRadius2 - majorRadius2) * 0.5;
+    double k3 = n;
+    double k2 = n * n + majorRadius2 * rd.z * rd.z + k;
+    double k1 = k * n + majorRadius2 * ro.z * rd.z;
+    double k0 = k * k + majorRadius2 * ro.z * ro.z - majorRadius2 * minorRadius2;
+
+    // Prevent |c1| from being too close to zero
+    if (std::abs(k3 * (k3 * k3 - k2) + k1) < 1e-4) {
+        std::swap(k1, k3);
+        k0 = 1.0 / k0;
+        k1 *= k0;
+        k2 *= k0;
+        k3 *= k0;
+    }
+
+    // Compute quartic coefficients
+    double c2 = 2.0 * k2 - 3.0 * k3 * k3;
+    double c1 = k3 * (k3 * k3 - k2) + k1;
+    double c0 = k3 * (k3 * (-3.0 * k3 * k3 + 4.0 * k2) - 8.0 * k1) + 4.0 * k0;
+
+    c2 /= 3.0;
+    c1 *= 2.0;
+    c0 /= 3.0;
+
+    double Q = c2 * c2 + c0;
+    double R = 3.0 * c0 * c2 - c2 * c2 * c2 - c1 * c1;
+
+    double h = R * R - Q * Q * Q;
+    double z = 0.0;
+
+    if (h < 0.0) {
+        // Four roots
+        double sQ = std::sqrt(Q);
+        z = 2.0 * sQ * std::cos(std::acos(R / (sQ * Q)) / 3.0);
+    } else {
+        // Two roots
+        double sQ = std::pow(std::sqrt(h) + std::abs(R), 1.0 / 3.0);
+        z = std::copysign(sQ + Q / sQ, R);
+    }
+    z = c2 - z;
+
+    double d1 = z - 3.0 * c2;
+    double d2 = z * z - 3.0 * c0;
+
+    if (std::abs(d1) < 1e-4) {
+        if (d2 < 0.0) return false;
+        d2 = std::sqrt(d2);
+    } else {
+        if (d1 < 0.0) return false;
+        d1 = std::sqrt(d1 * 0.5);
+        d2 = c1 / d1;
+    }
+
+    double result = std::numeric_limits<double>::infinity();
+
+    // Compute potential roots
+    h = d1 * d1 - z + d2;
+    if (h > 0.0) {
+        h = std::sqrt(h);
+        double t1 = -d1 - h - k3;
+        double t2 = -d1 + h - k3;
+        if (t1 > 0.0) result = t1;
+        if (t2 > 0.0) result = std::min(result, t2);
+    }
+
+    h = d1 * d1 - z - d2;
+    if (h > 0.0) {
+        h = std::sqrt(h);
+        double t1 = d1 - h - k3;
+        double t2 = d1 + h - k3;
+        if (t1 > 0.0) result = std::min(result, t1);
+        if (t2 > 0.0) result = std::min(result, t2);
+    }
+
+    // Check if no valid intersections
+    if (result == std::numeric_limits<double>::infinity()) return false;
+    if (result < interval.x || result > interval.y) return false;
+    glm::dvec3 hitPoint = ray.origin + result * ray.direction;
+
+    // Compute normal
+    glm::dvec3 grad = hitPoint * (glm::dot(hitPoint, hitPoint) - minorRadius2 - majorRadius2);
+    grad.z += 2.0 * majorRadius2 * hitPoint.z;
+    glm::dvec3 normal = glm::normalize(grad);
+
+    // Update photon information
+    photon.t = result;
+    photon.hitPoint = hitPoint;
+    photon.normal = normal;
+
+    return true;
+}
+
+Torus::~Torus()
+{
+    
+}
