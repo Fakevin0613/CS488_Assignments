@@ -144,7 +144,8 @@ bool SceneNode::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
     }
 	Ray transRay(
         glm::vec3(invtrans * glm::vec4(ray.origin, 1.0)),
-        glm::vec3(invtrans * glm::vec4(ray.direction, 0.0))
+        glm::vec3(invtrans * glm::vec4(ray.direction, 0.0)),
+		ray.time
     );
 	Photon childPhoton;
 	bool hit = false;

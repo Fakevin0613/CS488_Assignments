@@ -104,7 +104,7 @@ end
 
 lights = {gr.light({10, 5, 25}, {0.8, 0.8, 0.8}, {1, 0, 0.0005})}
 --{0, 2, 30}, {0, 0, -1}, {0, 1, 0}, 50,
-imSize = 512
+imSize = 1024
 --{200, 202, 430}
 gr.render(scene,
 	  'real-macho-cows-newview.png', imSize, imSize,

@@ -11,6 +11,12 @@ Ray::Ray(const glm::vec3& origin, const glm::vec3& direction){
     this->direction = direction;
 }
 
+Ray::Ray(const glm::vec3& origin, const glm::vec3& direction, double time){
+    this->origin = origin;
+    this->direction = direction;
+    this->time = time;
+}
+
 glm::vec3 Ray::at(float t) const {
     return origin + t * direction;
 }

@@ -6,6 +6,7 @@
 #include "Ray.hpp"
 #include "Primitive.hpp"
 #include "polyroots.hpp"
+using namespace std;
 
 Primitive::~Primitive()
 {
@@ -82,6 +83,49 @@ bool NonhierSphere::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 }
 
 NonhierSphere::~NonhierSphere()
+{
+}
+
+bool MovingSphere::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
+{
+    glm::vec3 center = this->center + velocity * ray.time;
+    // cout << "time: " << ray.time << endl;
+    // cout << "velocity: " << glm::to_string(velocity) << endl;
+    // cout << "center: " << glm::to_string(center) << endl;
+    glm::vec3 oc = ray.origin - center;
+    float a = glm::dot(ray.direction, ray.direction);
+    float b = 2.0f * glm::dot(oc, ray.direction);
+    float c = glm::dot(oc, oc) - radius * radius;
+    double roots[2];
+    size_t n_roots = quadraticRoots(a, b, c, roots);
+
+    float t = 0;
+    if (n_roots == 0) {
+        photon.hit = false;
+        return false;
+    } else if (n_roots == 1){
+        t = roots[0];
+    } else {
+        if (roots[0] < roots[1]) {
+            t = roots[0];
+        } else {
+            t = roots[1];
+        }
+    }
+
+    if (t <= interval[0] || t >= interval[1]) {
+        photon.hit = false;
+        return false;
+    }
+
+    photon.t = t;
+    photon.hitPoint = ray.at(t);
+    photon.normal = photon.hitPoint - center;
+    photon.hit = true;
+    return true;
+}
+
+MovingSphere::~MovingSphere()
 {
 }
 

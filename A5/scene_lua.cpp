@@ -259,6 +259,33 @@ int gr_sphere_cmd(lua_State* L)
   return 1;
 }
 
+// Create a Moving Sphere node
+extern "C"
+int gr_moving_sphere_cmd(lua_State* L)
+{
+  GRLUA_DEBUG_CALL;
+  
+  gr_node_ud* data = (gr_node_ud*)lua_newuserdata(L, sizeof(gr_node_ud));
+  data->node = 0;
+  
+  const char* name = luaL_checkstring(L, 1);
+
+  glm::vec3 center;
+  get_tuple(L, 2, &center[0], 3);
+
+  double radius = luaL_checknumber(L, 3);
+
+  glm::vec3 velocity;
+  get_tuple(L, 4, &velocity[0], 3);
+
+  data->node = new GeometryNode(name, new MovingSphere(center, radius, velocity));
+
+  luaL_getmetatable(L, "gr.node");
+  lua_setmetatable(L, -2);
+
+  return 1;
+}
+
 // Create a cube node
 extern "C"
 int gr_cube_cmd(lua_State* L)
@@ -430,8 +457,27 @@ int gr_render_cmd(lua_State* L)
   const char* env = std::getenv("ENABLE_STOCHASTIC_SAMPLING");
   bool enableStochasticSampling = env && std::string(env) == "1";
 
+  const char* env2 = std::getenv("ENABLE_SOFT_SHADOW");
+  bool enableSoftShadow = env2 && std::string(env2) == "1";
+
+  const char* env3 = std::getenv("ENABLE_REFLECTION");
+  bool enableReflection = env3 && std::string(env3) == "1";
+
+  const char* env4 = std::getenv("ENABLE_REFRACTION");
+  bool enableRefraction = env4 && std::string(env4) == "1";
+
+  const char* env5 = std::getenv("ENABLE_GLOSSY_REFLECTION");
+  bool enableGlossyReflection = env5 && std::string(env5) == "1";
+
+  const char* env6 = std::getenv("ENABLE_GLOSSY_REFRACTION");
+  bool enableGlossyRefraction = env6 && std::string(env6) == "1";
+
+  const char* env7 = std::getenv("ENABLE_MOTION_BLUR");
+  bool enableMotionBlur = env7 && std::string(env7) == "1";
+
 	Image im( width, height);
-	A5_Render(root->node, im, eye, view, up, fov, ambient, lights, enableStochasticSampling);
+	A5_Render(root->node, im, eye, view, up, fov, ambient, lights, 
+  enableStochasticSampling, enableSoftShadow, enableReflection, enableRefraction, enableGlossyReflection, enableGlossyRefraction, enableMotionBlur);
     im.savePng( filename );
 
 	return 0;
@@ -622,6 +668,7 @@ static const luaL_Reg grlib_functions[] = {
   {"torus", gr_torus_cmd},
   // New for assignment 4
   {"cube", gr_cube_cmd},
+  {"moving_sphere", gr_moving_sphere_cmd},
   {"nh_sphere", gr_nh_sphere_cmd},
   {"nh_box", gr_nh_box_cmd},
   {"mesh", gr_mesh_cmd},

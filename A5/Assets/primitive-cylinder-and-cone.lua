@@ -34,6 +34,6 @@ s9:rotate('Z', -120)
 white_light = gr.light({-200.0, 250.0, 600.0}, {0.8, 0.8, 0.8}, {1, 0, 0})
 magenta_light = gr.light({600.0, 200.0, 250.0}, {0.7, 0.0, 0.7}, {1, 0, 0})
 
-gr.render(scene_root, 'primitive-cylinder-and-cone.png', 256, 256,
+gr.render(scene_root, 'primitive-cylinder-and-cone.png', 2048, 2048,
 	  {0, 0, 800}, {0, 0, -800}, {0, 1, 0}, 50,
 	  {0.3, 0.3, 0.3}, {white_light, magenta_light})

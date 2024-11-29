@@ -44,6 +44,21 @@ private:
   double radius;
 };
 
+class MovingSphere : public Primitive {
+public:
+  MovingSphere(const glm::vec3& pos, double radius, const glm::vec3& velocity)
+    : center(pos), radius(radius), velocity(velocity) 
+  {
+  }
+  virtual ~MovingSphere();
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
+
+private:
+  glm::vec3 center;
+  double radius;
+  glm::vec3 velocity;
+};
+
 class NonhierBox : public Primitive {
 public:
   NonhierBox(const glm::vec3& pos, double size)

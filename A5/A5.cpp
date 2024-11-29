@@ -11,6 +11,13 @@
 #include <ctime>
 
 using namespace std;
+bool stochasticSampling;
+bool softShadow;
+bool reflection;
+bool refraction;
+bool glossyReflection;
+bool glossyRefraction;
+bool motionBlur;
 
 // Generate a random float between 0.0 and 1.0
 float rand_float() {
@@ -21,13 +28,6 @@ glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 &eye, const glm::v
     Photon photon;
     glm::vec3 color(0.0f);
     glm::vec2 interval(0.001f, 10000.0f);
-
-    bool reflection = true;
-    bool glossyReflection = false;
-    bool refraction = true;
-    bool glossyRefraction = false;
-    bool softShadow = true;
-
     // Check for intersection
     if (root->intersect(ray, interval, photon)) {
         photon.normal = normalize(photon.normal);
@@ -235,10 +235,32 @@ void A5_Render(
 		// Lighting parameters  
 		const glm::vec3 & ambient,
 		const std::list<Light *> & lights,
-		bool enableStochasticSampling
+		bool enableStochasticSampling,
+        bool enableSoftShadow,
+        bool enableReflection,
+        bool enableRefraction,
+        bool enableGlossyReflection,
+        bool enableGlossyRefraction,
+        bool enableMotionBlur
 ) {
 
   // Fill in raytracing code here...  
+  stochasticSampling = enableStochasticSampling;
+  softShadow = enableSoftShadow;
+  reflection = enableReflection;
+  refraction = enableRefraction;
+  glossyReflection = enableGlossyReflection;
+  glossyRefraction = enableGlossyRefraction;
+  motionBlur = enableMotionBlur;
+
+  std::cout << "Stochastic Sampling: " << stochasticSampling << std::endl;
+  std::cout << "Soft Shadow: " << softShadow << std::endl;
+  std::cout << "Reflection: " << reflection << std::endl;
+  std::cout << "Refraction: " << refraction << std::endl;
+  std::cout << "Glossy Reflection: " << glossyReflection << std::endl;
+  std::cout << "Glossy Refraction: " << glossyRefraction << std::endl;
+  std::cout << "Motion Blur: " << motionBlur << std::endl;
+
 
   std::cout << "F24: Calling A5_Render(\n" <<
 		  "\t" << *root <<
@@ -266,51 +288,103 @@ void A5_Render(
     glm::vec3 w_cam = glm::normalize(-view);           // Forward direction
     glm::vec3 u_cam = glm::normalize(glm::cross(up, w_cam)); // Right direction
     glm::vec3 v_cam = glm::cross(w_cam, u_cam);        // Up direction
-	std::cout << "Stochastic Sampling: " << enableStochasticSampling << std::endl;
 	for (uint y = 0; y < h; ++y) {
 		for (uint x = 0; x < w; ++x) {
 			glm::vec3 colour(0.0f);
-			if (enableStochasticSampling) {
-				// with super sampling
-				int sample = 16;
+			if (stochasticSampling) {
+                if (!motionBlur){
+                    int sample = 16;
+                    // Stockastic sampling
+                    for (int i = 0; i < sample; i++) {
+                        // Generate random offsets within the pixel
+                        double randX = (rand_float() - 0.5) * 0.5;
+                        double randY = (rand_float() - 0.5) * 0.5;
 
-                // Super sampling
-				// for (int i = 0; i < sample; i++) {
-				// 	for (int j = 0; j < sample; j++) {
-				// 		double px = (2.0 * (x + (i + 0.5) / sample) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
-				// 		double py = (1.0 - 2.0 * (y + (j + 0.5) / sample) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
-				// 		const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
-				// 		Ray ray = Ray(eye, primaryRay);
-				// 		colour += traceRay(ray, root, eye, ambient, lights);
-				// 	}
-				// }
+                        double px = (2.0 * (x + 0.5 + randX) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
+                        double py = (1.0 - 2.0 * (y + 0.5 + randY) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
 
-                // Stockastic sampling
-                for (int i = 0; i < sample; i++) {
-                    // Generate random offsets within the pixel
-                    double randX = (rand_float() - 0.5) * 0.5;
-                    double randY = (rand_float() - 0.5) * 0.5;
+                        const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+                        Ray ray = Ray(eye, primaryRay);
 
-                    double px = (2.0 * (x + 0.5 + randX) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
-                    double py = (1.0 - 2.0 * (y + 0.5 + randY) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
-
-                    const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
-                    Ray ray = Ray(eye, primaryRay);
-
-                    // Accumulate color from random sample
-                    colour += traceRay(ray, root, eye, ambient, lights);
+                        // Accumulate color from random sample
+                        colour += traceRay(ray, root, eye, ambient, lights);
+                    }
+                    // Average colour over samples
+                    colour /= static_cast<double>(sample);
                 }
-				// Average colour over samples
-    			colour /= static_cast<double>(sample);
+                else{
+                    int sample = 2;
+                    int motionSamples = 8;
+                    // Stockastic sampling
+                    for (int i = 0; i < sample; i++) {
+                        for (int j = 0; j < motionSamples; j++) {
+                            double time = j * 0.125f;
+                            // Generate random offsets within the pixel
+                            double randX = (rand_float() - 0.5) * 0.5;
+                            double randY = (rand_float() - 0.5) * 0.5;
+
+                            double px = (2.0 * (x + 0.5 + randX) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
+                            double py = (1.0 - 2.0 * (y + 0.5 + randY) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
+
+                            const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+                            Ray ray = Ray(eye, primaryRay, time);
+
+                            // Accumulate color from random sample
+                            colour += traceRay(ray, root, eye, ambient, lights);
+                        }
+                        colour /= static_cast<double>(motionSamples);
+                        colour *= 0.35;
+
+                        double randX = (rand_float() - 0.5) * 0.5;
+                        double randY = (rand_float() - 0.5) * 0.5;
+
+                        double px = (2.0 * (x + 0.5 + randX) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
+                        double py = (1.0 - 2.0 * (y + 0.5 + randY) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
+
+                        const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+                        Ray finalRay = Ray(eye, primaryRay, 1);
+
+                        // Accumulate color from random sample
+                        colour += (traceRay(finalRay, root, eye, ambient, lights) * 0.65);
+
+
+                    }
+                    // Average colour over samples
+                    colour /= static_cast<double>(sample);
+                }
 			}
 			else{
 				// without anti-aliasing
-				double px = (2.0 * (x + 0.5) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
-				double py = (1.0 - 2.0 * (y + 0.5) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
+                if (!motionBlur){
+                    double px = (2.0 * (x + 0.5) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
+                    double py = (1.0 - 2.0 * (y + 0.5) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
 
-				const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
-				Ray ray = Ray(eye, primaryRay);
-				colour += traceRay(ray, root, eye, ambient, lights);
+                    const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+                    Ray ray = Ray(eye, primaryRay);
+                    colour += traceRay(ray, root, eye, ambient, lights);
+                }
+                else{
+                    int motionSamples = 8;
+                    for (int j = 0; j < motionSamples; j++) {
+                        double time = j * 0.125f;
+                        double px = (2.0 * (x + 0.5) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
+                        double py = (1.0 - 2.0 * (y + 0.5) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
+
+                        const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+                        Ray ray = Ray(eye, primaryRay, time);
+                        // std::cout << "time: " << ray.time << std::endl;
+                        colour += traceRay(ray, root, eye, ambient, lights);
+                    }
+                    colour /= static_cast<double>(motionSamples);
+                    colour *= 0.35;
+
+                    double px = (2.0 * (x + 0.5) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
+                    double py = (1.0 - 2.0 * (y + 0.5) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
+
+                    const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
+                    Ray finalRay = Ray(eye, primaryRay, 1);
+                    colour += (traceRay(finalRay, root, eye, ambient, lights) * 0.65);
+                }
 			}
 			colour = glm::clamp(colour, glm::vec3(0.0f), glm::vec3(1.0f));
 

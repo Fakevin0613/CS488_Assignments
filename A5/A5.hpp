@@ -24,5 +24,11 @@ void A5_Render(
 		// Lighting parameters
 		const glm::vec3 & ambient,
 		const std::list<Light *> & lights,
-		bool enableStochasticSampling
+		bool enableStochasticSampling,
+		bool enableSoftShadow,
+		bool enableReflection,
+		bool enableRefraction,
+		bool enableGlossyReflection,
+		bool enableGlossyRefraction,
+		bool enableMotionBlur
 );
