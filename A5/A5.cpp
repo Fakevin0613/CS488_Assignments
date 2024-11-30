@@ -318,7 +318,7 @@ void A5_Render(
                     // Stockastic sampling
                     for (int i = 0; i < sample; i++) {
                         for (int j = 0; j < motionSamples; j++) {
-                            double time = j * 0.125f;
+                            double time = j * (1.0f / (double) motionSamples);
                             // Generate random offsets within the pixel
                             double randX = (rand_float() - 0.5) * 0.5;
                             double randY = (rand_float() - 0.5) * 0.5;
@@ -364,9 +364,9 @@ void A5_Render(
                     colour += traceRay(ray, root, eye, ambient, lights);
                 }
                 else{
-                    int motionSamples = 8;
+                    int motionSamples = 24;
                     for (int j = 0; j < motionSamples; j++) {
-                        double time = j * 0.125f;
+                        double time = j * (1.0f / (double) motionSamples);
                         double px = (2.0 * (x + 0.5) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
                         double py = (1.0 - 2.0 * (y + 0.5) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
 
@@ -376,14 +376,14 @@ void A5_Render(
                         colour += traceRay(ray, root, eye, ambient, lights);
                     }
                     colour /= static_cast<double>(motionSamples);
-                    colour *= 0.35;
+                    colour *= 0.5f;
 
                     double px = (2.0 * (x + 0.5) / static_cast<double>(w) - 1.0) * imagePlaneWidth / 2.0;
                     double py = (1.0 - 2.0 * (y + 0.5) / static_cast<double>(h)) * imagePlaneHeight / 2.0;
 
                     const glm::vec3 primaryRay = glm::normalize(px * u_cam + py * v_cam - w_cam);
                     Ray finalRay = Ray(eye, primaryRay, 1);
-                    colour += (traceRay(finalRay, root, eye, ambient, lights) * 0.65);
+                    colour += (traceRay(finalRay, root, eye, ambient, lights) * 0.5f);
                 }
 			}
 			colour = glm::clamp(colour, glm::vec3(0.0f), glm::vec3(1.0f));

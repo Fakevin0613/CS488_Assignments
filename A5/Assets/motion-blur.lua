@@ -5,15 +5,15 @@ mat3 = gr.material({1.0, 0.6, 0.1}, {0.5, 0.7, 0.5}, 25)
 -- Root Node
 scene_root = gr.node('root')
 
-s1 = gr.moving_sphere('s1', {2, 2, 0}, 0.75, {-4, -4, 0})
+s1 = gr.moving_sphere('s1', {2, 2, -4}, 0.75, {-4, -4, 4})
 scene_root:add_child(s1)
 s1:set_material(mat3)
 
-s3 = gr.moving_sphere('s1', {-2, 1, 0}, 0.6, {3, 2, 0})
+s3 = gr.moving_sphere('s1', {-2, 2, -5}, 0.6, {4, 1, 5})
 scene_root:add_child(s3)
 s3:set_material(mat3)
 
-s4 = gr.moving_sphere('s1', {3, -1, 0}, 0.6, {-5, 2, 0})
+s4 = gr.moving_sphere('s1', {3, -1, -6}, 0.6, {-6, 2, 6})
 scene_root:add_child(s4)
 s4:set_material(mat3)
 
