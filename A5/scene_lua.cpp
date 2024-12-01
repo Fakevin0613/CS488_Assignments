@@ -56,6 +56,7 @@
 #include "Material.hpp"
 #include "PhongMaterial.hpp"
 #include "A5.hpp"
+#include "Image.hpp"
 
 typedef std::map<std::string,Mesh*> MeshMap;
 static MeshMap mesh_map;
@@ -234,6 +235,34 @@ int gr_torus_cmd(lua_State* L)
   double majorRadius = luaL_checknumber(L, 4);
 
   data->node = new GeometryNode(name, new Torus(center, minorRadius, majorRadius));
+
+  luaL_getmetatable(L, "gr.node");
+  lua_setmetatable(L, -2);
+
+  return 1;
+}
+
+// Create a Plane node
+extern "C"
+int gr_plane_cmd(lua_State* L)
+{
+  GRLUA_DEBUG_CALL;
+  
+  gr_node_ud* data = (gr_node_ud*)lua_newuserdata(L, sizeof(gr_node_ud));
+  data->node = 0;
+
+  const char* name = luaL_checkstring(L, 1);
+
+  glm::vec3 center;
+  get_tuple(L, 2, &center[0], 3);
+
+  glm::vec3 normal;
+  get_tuple(L, 3, &normal[0], 3);
+
+  double width = luaL_checknumber(L, 4);
+  double height = luaL_checknumber(L, 5);
+
+  data->node = new GeometryNode(name, new Plane(center, normal, width, height));
 
   luaL_getmetatable(L, "gr.node");
   lua_setmetatable(L, -2);
@@ -564,6 +593,28 @@ int gr_node_set_material_cmd(lua_State* L)
   return 0;
 }
 
+// Set a node's texture
+extern "C"
+int gr_node_set_texture_cmd(lua_State* L)
+{
+  GRLUA_DEBUG_CALL;
+  
+  gr_node_ud* selfdata = (gr_node_ud*)luaL_checkudata(L, 1, "gr.node");
+  luaL_argcheck(L, selfdata != 0, 1, "Node expected");
+
+  GeometryNode* self = dynamic_cast<GeometryNode*>(selfdata->node);
+  luaL_argcheck(L, self != 0, 1, "Geometry node expected");
+  
+  const char* filename = luaL_checkstring(L, 2);
+  Image texture;
+  luaL_argcheck(L, texture.loadPng(filename), 2, "Texture file not loaded");
+
+  PhongMaterial* material = dynamic_cast<PhongMaterial*>(self->m_material);
+  material->setTexture(texture);
+
+  return 0;
+}
+
 // Add a Scaling transformation to a node.
 extern "C"
 int gr_node_scale_cmd(lua_State* L)
@@ -666,6 +717,7 @@ static const luaL_Reg grlib_functions[] = {
   {"cylinder", gr_cylinder_cmd},
   {"cone", gr_cone_cmd},
   {"torus", gr_torus_cmd},
+  {"plane", gr_plane_cmd},
   // New for assignment 4
   {"cube", gr_cube_cmd},
   {"moving_sphere", gr_moving_sphere_cmd},
@@ -693,6 +745,7 @@ static const luaL_Reg grlib_node_methods[] = {
   {"__gc", gr_node_gc_cmd},
   {"add_child", gr_node_add_child_cmd},
   {"set_material", gr_node_set_material_cmd},
+  {"set_texture", gr_node_set_texture_cmd},
   {"scale", gr_node_scale_cmd},
   {"rotate", gr_node_rotate_cmd},
   {"translate", gr_node_translate_cmd},

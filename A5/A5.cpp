@@ -36,7 +36,9 @@ glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 &eye, const glm::v
         PhongMaterial *material = static_cast<PhongMaterial *>(photon.material);
 
         // Ambient component
-        color += ambient * material->diffuse();
+        glm::vec3 sampled_color = material->diffuse(photon.uv);
+        // std::cout << "Sampled Color: " << sampled_color.x << " " << sampled_color.y << " " << sampled_color.z << std::endl;
+        color += ambient * material->diffuse(photon.uv);
 
         if (softShadow){
             for (Light *light : lights) {
@@ -72,7 +74,7 @@ glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 &eye, const glm::v
                     double attenuation = 1.0f / (light->falloff[0] + light->falloff[1] * r + light->falloff[2] * r * r);
 
                     // Diffuse component
-                    lightColor += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse() * light->colour;
+                    lightColor += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse(photon.uv) * light->colour;
                     // Specular component
                     lightColor += pow(glm::max(0.0f, dot(R, V)), material->shininess()) * attenuation * material->specular() * light->colour;
                 }
@@ -98,7 +100,7 @@ glm::vec3 traceRay(Ray &ray, SceneNode *root, const glm::vec3 &eye, const glm::v
                     double attenuation = 1.0f / (light->falloff[0] + light->falloff[1] * r + light->falloff[2] * r * r);
 
                     // Diffuse component
-                    color += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse() * light->colour;
+                    color += glm::max(0.0f, dot(S, N)) * attenuation * material->diffuse(photon.uv) * light->colour;
                     // Specular component
                     color += pow(glm::max(0.0f, dot(R, V)), material->shininess()) * attenuation * material->specular() * light->colour;
                 }

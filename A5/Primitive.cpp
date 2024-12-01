@@ -79,6 +79,19 @@ bool NonhierSphere::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
     photon.hitPoint = ray.at(t);
     photon.normal = photon.hitPoint - center;
     photon.hit = true;
+    glm::vec3 localPoint = glm::normalize(photon.hitPoint - center);
+
+    // Calculate spherical coordinates
+    // We want the texture to wrap around horizontally (U coordinate)
+    // and from top to bottom vertically (V coordinate)
+    // float u = 0.5f + (atan2(localPoint.z, localPoint.x) / (2.0f * M_PI));
+    // float v = 0.5f - (asin(localPoint.y) / M_PI);
+
+    float u = atan2(-localPoint.z, localPoint.x) / (2.0f * M_PI);  // Negative sign to fix mirroring
+    float v = acos(-localPoint.y) / M_PI;
+
+    // Ensure UV coordinates are in [0,1] range
+    photon.uv = glm::vec2(u, v);
     return true;
 }
 
@@ -365,4 +378,57 @@ bool Torus::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
 Torus::~Torus()
 {
     
+}
+bool Plane::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
+    // Compute the denominator to check if the ray is parallel to the plane
+    float denom = glm::dot(normal, ray.direction);
+    if (fabs(denom) < 1e-6) { // Parallel case: No intersection
+        photon.hit = false;
+        return false;
+    }
+
+    // Compute the intersection parameter t
+    float t = glm::dot(center - ray.origin, normal) / denom;
+
+    // Check if t is within the interval
+    if (t <= interval[0] || t >= interval[1]) {
+        photon.hit = false;
+        return false;
+    }
+
+    // Update the photon properties
+    photon.t = t;
+    photon.hitPoint = ray.at(t); // Compute the intersection point
+
+    // Check if the intersection point is within the plane's bounds
+    glm::vec3 localPoint = photon.hitPoint - center;
+    float u_proj = glm::dot(localPoint, u);
+    float v_proj = glm::dot(localPoint, v);
+
+    if (fabs(u_proj) > width / 2 || fabs(v_proj) > height / 2) {
+        photon.hit = false;
+        return false;
+    }
+
+    photon.normal = normal;
+    photon.hit = true;
+
+    // Map local coordinates directly to texture space
+    // Scale from [-width/2, width/2] to [0, width]
+    // and [-height/2, height/2] to [0, height]
+    photon.uv = glm::vec2(
+        (u_proj + width/2) / width,     // Map [-width/2, width/2] to [0,1]
+        (v_proj + height/2) / height    // Map [-height/2, height/2] to [0,1]
+    );
+
+    // std::cout << "UV coords: (" << photon.uv.x << ", " << photon.uv.y << ")" << std::endl;
+    // std::cout << "Local coords: u_proj=" << u_proj << ", v_proj=" << v_proj << std::endl;
+    // std::cout << "Plane dims: width=" << width << ", height=" << height << std::endl;
+
+    return true;
+}
+
+Plane::~Plane()
+{
+
 }

@@ -13,6 +13,7 @@ public:
     double t;
     bool hit;
     Material *material;
+    glm::vec2 uv;
 };
 
 #endif

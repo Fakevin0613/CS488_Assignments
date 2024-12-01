@@ -42,6 +42,9 @@ public:
 	// Retrieve a particular component from the image.
 	double & operator()(uint x, uint y, uint i);
 
+	// Load the image from the PNG file with name 'filename'.
+	bool loadPng(const std::string& filename);
+
 	// Save this image into the PNG file with name 'filename'.
 	// Warning: If 'filename' already exists, it will be overwritten.
 	bool savePng(const std::string & filename) const;

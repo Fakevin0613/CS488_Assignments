@@ -96,6 +96,52 @@ static double clamp(double x, double a, double b)
 	return x < a ? a : (x > b ? b : x);
 }
 
+bool Image::loadPng(const std::string &filename) 
+{
+    std::vector<unsigned char> image;
+    unsigned width, height;
+
+    // Decode the PNG file
+    unsigned error = lodepng::decode(image, width, height, filename);
+
+    if (error) {
+        std::cerr << "PNG decoder error " << error << ": " << lodepng_error_text(error)
+                  << std::endl;
+        return false;
+    }
+
+    // Update image dimensions
+    m_width = width;
+    m_height = height;
+
+    // Free existing data if any
+    delete[] m_data;
+    m_data = new double[m_width * m_height * m_colorComponents];
+
+    // Convert RGBA data from bytes [0-255] to doubles [0.0-1.0], but only store RGB
+    for (unsigned y = 0; y < m_height; ++y) {
+        for (unsigned x = 0; x < m_width; ++x) {
+            for (unsigned c = 0; c < m_colorComponents; ++c) {
+                // Calculate indices for source and destination
+                size_t src_idx = 4 * (y * m_width + x) + c;  // Source is RGBA (4 components)
+                size_t dst_idx = m_colorComponents * (y * m_width + x) + c;  // Dest is RGB (3 components)
+                
+                // Normalize from [0-255] to [0.0-1.0]
+                if (src_idx < image.size()) {
+                    m_data[dst_idx] = static_cast<double>(image[src_idx]) / 255.0;
+                } else {
+                    m_data[dst_idx] = 0.0;  // Safety fallback
+                }
+            }
+        }
+    }
+
+    std::cout << "Loaded texture: " << filename << " (" << m_width << "x" << m_height 
+              << "), components: " << m_colorComponents << std::endl;
+
+    return true;
+}
+
 //---------------------------------------------------------------------------------------
 bool Image::savePng(const std::string & filename) const
 {

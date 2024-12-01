@@ -5,7 +5,7 @@ export ENABLE_REFLECTION=0
 export ENABLE_REFRACTION=0
 export ENABLE_GLOSSY_REFLECTION=0
 export ENABLE_GLOSSY_REFRACTION=0
-export ENABLE_MOTION_BLUR=1
+export ENABLE_MOTION_BLUR=0
 
 # Echo the values to verify
 echo "stochastic sampling: $ENABLE_STOCHASTIC_SAMPLING"

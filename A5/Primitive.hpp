@@ -116,3 +116,25 @@ private:
   double minorRadius;
   double majorRadius;
 };
+
+class Plane : public Primitive {
+public:
+  Plane(glm::vec3& center, glm::vec3& normal, double width, double height)
+    : center(center), normal(glm::normalize(normal)), width(width), height(height) {
+      // Compute the local tangent vectors (u and v)
+      u = glm::normalize(glm::cross(normal, glm::vec3(1, 0, 0)));
+      if (glm::length(u) < 1e-6) {
+          u = glm::normalize(glm::cross(normal, glm::vec3(0, 1, 0)));
+      }
+      v = glm::normalize(glm::cross(normal, u));
+  }
+  virtual ~Plane();
+  virtual bool intersect(Ray& ray, glm::vec2 interval, Photon& photon) override;
+private:
+  glm::vec3 center;   // Center of the plane  
+  glm::vec3 normal;   // Normal vector of the plane
+  glm::vec3 u;        // Tangent vector along the width of the plane
+  glm::vec3 v;        // Tangent vector along the height of the plane
+  double width;        // Width of the plane
+  double height;       // Height of the plane
+};
