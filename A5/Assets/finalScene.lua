@@ -7,7 +7,7 @@ mat_dark_brown = gr.material({0.4, 0.2, 0.05}, {0.4, 0.4, 0.4}, 25) -- Darker br
 mat_wall = gr.material({0.85, 0.85, 0.85}, {0.2, 0.2, 0.2}, 0) -- Light grey walls
 mat_floor = gr.material({0.8, 0.6, 0.4}, {0.4, 0.4, 0.4}, 20) -- Wooden floor with warm tone
 mat_cue = gr.material({0.9, 0.7, 0.5}, {0.6, 0.6, 0.6}, 35) -- Light wood for cue
-mat_cue_tip = gr.material({0.2, 0.2, 0.2}, {0.1, 0.1, 0.1}, 10) -- Dark tip for cue
+mat_cow = gr.material({1.0, 0.5, 0.0}, {0.9, 0.4, 0.1}, 25) -- cow
 
 local table_length = 9  -- Reduced from 12
 local table_width = 4.5   -- Reduced from 6
@@ -43,7 +43,7 @@ room_group:add_child(left_back_wall)
 left_back_wall:set_material(mat_wall)
 left_back_wall:set_texture('Assets/texture/download.png')
 
-local picture = gr.plane('picture', {-5, 12.5 - 5.15, 2.5}, {1, -1, 0}, 4, 4)
+local picture = gr.plane('picture', {-5, 12.5 - 5.1, 2.5}, {1, -1, 0}, 4, 4)
 room_group:add_child(picture)
 picture:set_material(mat_picture)
 picture:set_texture('Assets/texture/picture.png')
@@ -62,6 +62,18 @@ right_back_wall:set_texture('Assets/texture/download.png')
 local mirror = gr.plane('mirror', {6, 12.5 - 6.15, 2.5}, {1, 1, 0}, 3, 3)
 room_group:add_child(mirror)
 mirror:set_material(mat_mirror)
+
+local cow = gr.plane('cow', {2.2, 12.5 - 2.35, 2.5}, {1, 1, 0}, 3, 3)
+room_group:add_child(cow)
+cow:set_material(mat_cow)
+
+local cow_poly = gr.mesh('cow', 'Assets/cow.obj')
+cow_poly:scale(0.6, 0.6, 0.6)
+cow_poly:rotate('X', 90)
+cow_poly:rotate('Z', -135)
+cow_poly:translate(3.35, 12.5 - 1.2, 2.4)
+room_group:add_child(cow_poly)
+cow_poly:set_material(mat_floor)
 
 -- Snooker cue properties
 local cue_length = 6.0
@@ -219,7 +231,7 @@ cushion_bottom:set_texture('Assets/texture/wood.png')
 
 inner_bottom = gr.cube('cushion_bottom')
 table_group:add_child(inner_bottom)
-inner_bottom:scale(table_width + cushion_width * 2, cushion_width * 0.25, cushion_height)
+inner_bottom:scale(table_width, cushion_width * 0.25, cushion_height)
 inner_bottom:translate(-table_width / 2 - cushion_width, -table_length / 2 + cushion_width * 0.75, 0)
 inner_bottom:set_material(mat_green)
 inner_bottom:set_texture('Assets/texture/table.png')
@@ -300,6 +312,6 @@ white_light = gr.light({-8.0, 15.0, 8.0}, {0.9, 0.9, 0.9}, {1, 0, 0})
 vertical_light = gr.light({0, 25.0, 0.0}, {0.8, 0.9, 0.7}, {1, 1, 0})
 
 -- Render with adjusted camera
-gr.render(scene_root, 'snooker-table.png', 2048, 2048,
+gr.render(scene_root, 'snooker-table-256.png', 1024, 1024,
           {0, 0, 13}, {0, 0, -10}, {0, 1, 0}, 50,
           {0.3, 0.3, 0.3}, {white_light, vertical_light})
