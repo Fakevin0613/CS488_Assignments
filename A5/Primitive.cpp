@@ -165,9 +165,21 @@ bool NonhierBox::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
     photon.t = tNear >= interval.x ? tNear : tFar;
     photon.hitPoint = ray.at(photon.t);
 
-    if (photon.t == t0.x || photon.t == t1.x) photon.normal = glm::vec3((photon.t == t0.x ? -1 : 1), 0, 0);
-    else if (photon.t == t0.y || photon.t == t1.y) photon.normal = glm::vec3(0, (photon.t == t0.y ? -1 : 1), 0);
-    else if (photon.t == t0.z || photon.t == t1.z) photon.normal = glm::vec3(0, 0, (photon.t == t0.z ? -1 : 1));
+    // Calculate normal and UV coordinates based on which face was hit
+    glm::vec3 localPoint = (photon.hitPoint - m_pos) / m_size; // Normalize to [0,1] range
+    
+    if (photon.t == t0.x || photon.t == t1.x) {
+        photon.normal = glm::vec3((photon.t == t0.x ? -1 : 1), 0, 0);
+        photon.uv = glm::vec2(localPoint.z, localPoint.y); // Map Z to U, Y to V for X faces
+    }
+    else if (photon.t == t0.y || photon.t == t1.y) {
+        photon.normal = glm::vec3(0, (photon.t == t0.y ? -1 : 1), 0);
+        photon.uv = glm::vec2(localPoint.x, localPoint.z); // Map X to U, Z to V for Y faces
+    }
+    else if (photon.t == t0.z || photon.t == t1.z) {
+        photon.normal = glm::vec3(0, 0, (photon.t == t0.z ? -1 : 1));
+        photon.uv = glm::vec2(localPoint.x, localPoint.y); // Map X to U, Y to V for Z faces
+    }
 
     return true;
 }
@@ -205,10 +217,65 @@ bool Cylinder::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
             photon.hit = true;
             photon.hitPoint = hit_point;
             photon.normal = glm::normalize(hit_point - center - projection * axis);
+            
+            // Calculate UV coordinates
+            // U coordinate: angle around cylinder (0 to 1)
+            // V coordinate: height along cylinder (0 to 1)
+            glm::vec3 localPoint = hit_point - center;
+            float phi = atan2(glm::dot(localPoint, glm::cross(axis, glm::vec3(0, 0, 1))),
+                            glm::dot(localPoint, glm::cross(axis, glm::cross(axis, glm::vec3(0, 0, 1)))));
+            float u = (phi + M_PI) / (2.0f * M_PI);
+            float v = projection / height;
+            
+            photon.uv = glm::vec2(u, v);
             return true;
         }
     }
 
+    // Check caps
+    double t_cap = -1;
+    glm::vec3 normal_cap;
+    
+    // Bottom cap (at center)
+    double t_bottom = -glm::dot(oc, axis) / glm::dot(ray.direction, axis);
+    if (t_bottom >= interval.x && t_bottom <= interval.y) {
+        glm::vec3 hit_point = ray.origin + t_bottom * ray.direction;
+        glm::vec3 radial_vec = hit_point - center;
+        if (glm::length(radial_vec - glm::dot(radial_vec, axis) * axis) <= radius) {
+            t_cap = t_bottom;
+            normal_cap = -axis;
+        }
+    }
+    
+    // Top cap (at center + height * axis)
+    glm::vec3 oc_top = ray.origin - (center + height * axis);
+    double t_top = -glm::dot(oc_top, axis) / glm::dot(ray.direction, axis);
+    if (t_top >= interval.x && t_top <= interval.y) {
+        glm::vec3 hit_point = ray.origin + t_top * ray.direction;
+        glm::vec3 radial_vec = hit_point - (center + height * axis);
+        if (glm::length(radial_vec - glm::dot(radial_vec, axis) * axis) <= radius) {
+            if (t_cap < 0 || t_top < t_cap) {
+                t_cap = t_top;
+                normal_cap = axis;
+            }
+        }
+    }
+    
+    if (t_cap >= 0) {
+        photon.t = t_cap;
+        photon.hit = true;
+        photon.hitPoint = ray.origin + t_cap * ray.direction;
+        photon.normal = normal_cap;
+        
+        // UV coordinates for caps (polar coordinates)
+        glm::vec3 localPoint = photon.hitPoint - (center + (normal_cap.y > 0 ? height : 0.0f) * axis);
+        float r = glm::length(localPoint - glm::dot(localPoint, axis) * axis) / radius;
+        float theta = atan2(glm::dot(localPoint, glm::cross(axis, glm::vec3(0, 0, 1))),
+                          glm::dot(localPoint, glm::cross(axis, glm::cross(axis, glm::vec3(0, 0, 1)))));
+        photon.uv = glm::vec2((theta + M_PI) / (2.0f * M_PI), r);
+        return true;
+    }
+    
     return false;
 }
 
@@ -413,17 +480,12 @@ bool Plane::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
     photon.normal = normal;
     photon.hit = true;
 
-    // Map local coordinates directly to texture space
-    // Scale from [-width/2, width/2] to [0, width]
-    // and [-height/2, height/2] to [0, height]
+    // Map local coordinates directly to texture space with 90-degree rotation
+    // We swap u and v coordinates and invert one of them for 90-degree rotation
     photon.uv = glm::vec2(
-        (u_proj + width/2) / width,     // Map [-width/2, width/2] to [0,1]
-        (v_proj + height/2) / height    // Map [-height/2, height/2] to [0,1]
+        1.0f - (v_proj + height/2) / height,  // Inverted v coordinate becomes u
+        (u_proj + width/2) / width            // u coordinate becomes v
     );
-
-    // std::cout << "UV coords: (" << photon.uv.x << ", " << photon.uv.y << ")" << std::endl;
-    // std::cout << "Local coords: u_proj=" << u_proj << ", v_proj=" << v_proj << std::endl;
-    // std::cout << "Plane dims: width=" << width << ", height=" << height << std::endl;
 
     return true;
 }
