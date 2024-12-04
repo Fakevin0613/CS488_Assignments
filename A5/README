@@ -1,12 +1,88 @@
+## Quick Start
 ```
+cd A5
 premake4 gmake
 make
-./A5
+source A5/env.sh
 ./A5 Assets/sample.lua
 ```
 
 ## Manual
-`export ENABLE_STOCHASTIC_SAMPLING=1`
+1. Extra feature such as reflection, refraction, glossy reflection/refraction, stochastic sampling, softshadows, motion blur can be configured in A5/env.sh. 
+For example, to enable reflection, set ENABLE_REFLECTION=1 in A5/env.sh. To disable a feature, set its value to 0. To run A5/env.sh, run `source A5/env.sh` in the bash console, and the features will be enabled/disabled.
+2. To make the material reflecive or refractive, turn on the corresponding feature in A5/env.sh and modify the material as follows:
+```
+reflective_material = gr.material(
+    {0.0, 0.3, 0.6},  -- Diffuse color (RGB)
+    {0.0, 0.2, 0.55}, -- Specular color (RGB)
+    25,               -- Shininess
+    0.0,              -- Transparency (1 for fully transparent)
+    0.0,              -- Reflection (1 for fully reflective)
+    0.0               -- Refraction index (1.5 for glass-like material)
+)
+```
+3. To create cylinder, cone and torus, you don't need to turn on any feature in A5/env.sh. You can create them as below. Or, you can refer to the examples in the `Assets/primitive-cylinder-and-cone.lua` and `Assets/primitive-torus.lua` folder.
+```
+cylinder = gr.cylinder(
+    's6',                -- Name of the cylinder
+    {150, -200, -200},   -- Base position (x, y, z)
+    {0, 1, 0},           -- Axis direction (aligned with Y-axis)
+    30,                  -- Radius
+    300                  -- Height
+)
 
-### Notes
+cone = gr.cone(
+    'cone1',             -- Name of the cone
+    {-150, -200, -250},  -- Base position (x, y, z)
+    {0, 1, 0},           -- Axis direction (aligned with Y-axis)
+    2,                   -- Base radius
+    200                  -- Height
+)
+
+local torus = gr.torus(
+    'torus1',            -- Name of the torus
+    {0, 0, 0},           -- Center position (x, y, z)
+    1,                   -- Major radius (distance from center to tube center)
+    2                    -- Minor radius (tube radius)
+)
+```
+4. To load texture from file, the texture will be attached to the primitive's material. And the texture will overwrite the material's color. The next time you apply the same material to another primitive, the texture will be applied as well.
+```
+-- Define a material for the sphere
+local sphere_material = gr.material(
+    {0.7, 1.0, 0.7},
+    {0.5, 0.7, 0.5},
+    25
+)
+
+-- Create a sphere and set its material
+local sphere = gr.nh_sphere('sphere', {0, 0, 0}, 1)
+sphere:set_material(sphere_material)
+
+-- Load and apply a texture to the sphere
+sphere:set_texture("Assets/texture/Ball1.png")
+
+-- Create a plane and set its material, the plane will have the same material as the sphere
+local plane = gr.nh_plane('plane', {0, 0, 0}, {0, 1, 0})
+plane:set_material(sphere_material)
+
+``` 
+
+## Notes
+1. The program is a ray tracer extended from A4.
+2. All generated images are put in the `/image` folder (including the screenshot.png), and they indicate the corresponding scene and objectives.
+3. All useful textures are put in the `/Assets/texture` folder.
+4. Some lua files are modified and added a prefix of `Assets/` to the obj, so that scene can be made in /A5.
+
+## Objectives:
+1. Snooker Table Arrangement
+2. Reflection
+3. Refraction
+4. Glossy Reflection and Glossy Refraction
+5. Stochastic Sampling
+6. Soft Shadows
+7. Primitive Cylinder and Cone
+8. Primitive Torus
+9. Texture Mapping
+10. Motion Blur
 

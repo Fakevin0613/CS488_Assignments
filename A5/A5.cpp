@@ -317,7 +317,7 @@ void A5_Render(
                 else{
                     int sample = 2;
                     int motionSamples = 8;
-                    // Stockastic sampling
+                    // Stockastic sampling and motion blur
                     for (int i = 0; i < sample; i++) {
                         for (int j = 0; j < motionSamples; j++) {
                             double time = j * (1.0f / (double) motionSamples);
@@ -366,6 +366,7 @@ void A5_Render(
                     colour += traceRay(ray, root, eye, ambient, lights);
                 }
                 else{
+                    // motion blur
                     int motionSamples = 24;
                     for (int j = 0; j < motionSamples; j++) {
                         double time = j * (1.0f / (double) motionSamples);

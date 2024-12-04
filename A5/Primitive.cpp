@@ -81,9 +81,6 @@ bool NonhierSphere::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
     photon.hit = true;
     glm::vec3 localPoint = glm::normalize(photon.hitPoint - center);
 
-    // Calculate spherical coordinates
-    // We want the texture to wrap around horizontally (U coordinate)
-    // and from top to bottom vertically (V coordinate)
     // float u = 0.5f + (atan2(localPoint.z, localPoint.x) / (2.0f * M_PI));
     // float v = 0.5f - (asin(localPoint.y) / M_PI);
 
@@ -166,19 +163,19 @@ bool NonhierBox::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
     photon.hitPoint = ray.at(photon.t);
 
     // Calculate normal and UV coordinates based on which face was hit
-    glm::vec3 localPoint = (photon.hitPoint - m_pos) / m_size; // Normalize to [0,1] range
+    glm::vec3 localPoint = (photon.hitPoint - m_pos) / m_size;
     
     if (photon.t == t0.x || photon.t == t1.x) {
         photon.normal = glm::vec3((photon.t == t0.x ? -1 : 1), 0, 0);
-        photon.uv = glm::vec2(localPoint.z, localPoint.y); // Map Z to U, Y to V for X faces
+        photon.uv = glm::vec2(localPoint.z, localPoint.y);
     }
     else if (photon.t == t0.y || photon.t == t1.y) {
         photon.normal = glm::vec3(0, (photon.t == t0.y ? -1 : 1), 0);
-        photon.uv = glm::vec2(localPoint.x, localPoint.z); // Map X to U, Z to V for Y faces
+        photon.uv = glm::vec2(localPoint.x, localPoint.z);
     }
     else if (photon.t == t0.z || photon.t == t1.z) {
         photon.normal = glm::vec3(0, 0, (photon.t == t0.z ? -1 : 1));
-        photon.uv = glm::vec2(localPoint.x, localPoint.y); // Map X to U, Y to V for Z faces
+        photon.uv = glm::vec2(localPoint.x, localPoint.y);
     }
 
     return true;
@@ -303,6 +300,7 @@ bool Cone::intersect(Ray& ray, glm::vec2 interval, Photon& photon)
 
     // Solve the quadratic equation
     double discriminant = b * b - 4 * a * c;
+    // cout << "discriminant: " << discriminant << endl;
     if (discriminant < 0) return false;  // No intersection
 
     double sqrt_discriminant = sqrt(discriminant);
@@ -338,7 +336,7 @@ Cone::~Cone()
 
 // Torus intersection
 // The quartic equation provided in polyroot.cpp is not reliable
-// Therefore, we use the idea from https://www.shadertoy.com/view/4sBGDy
+// Therefore, I adapt the idea and modified the codes from https://www.shadertoy.com/view/4sBGDy and create the Torus intersection
 bool Torus::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
     glm::dvec3 ro = ray.origin - center;
     glm::dvec3 rd = ray.direction;
@@ -346,7 +344,6 @@ bool Torus::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
     double majorRadius2 = majorRadius * majorRadius;
     double minorRadius2 = minorRadius * minorRadius;
 
-    // Calculate coefficients for the quartic equation
     double m = glm::dot(ro, ro);  // |ro|^2
     double n = glm::dot(ro, rd);  // ro · rd
 
@@ -355,8 +352,11 @@ bool Torus::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
     double k2 = n * n + majorRadius2 * rd.z * rd.z + k;
     double k1 = k * n + majorRadius2 * ro.z * rd.z;
     double k0 = k * k + majorRadius2 * ro.z * ro.z - majorRadius2 * minorRadius2;
+    // cout << "k0: " << k0 << endl;
+    // cout << "k1: " << k1 << endl;
+    // cout << "k2: " << k2 << endl;
+    // cout << "k3: " << k3 << endl;
 
-    // Prevent |c1| from being too close to zero
     if (std::abs(k3 * (k3 * k3 - k2) + k1) < 1e-4) {
         std::swap(k1, k3);
         k0 = 1.0 / k0;
@@ -365,10 +365,13 @@ bool Torus::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
         k3 *= k0;
     }
 
-    // Compute quartic coefficients
     double c2 = 2.0 * k2 - 3.0 * k3 * k3;
     double c1 = k3 * (k3 * k3 - k2) + k1;
     double c0 = k3 * (k3 * (-3.0 * k3 * k3 + 4.0 * k2) - 8.0 * k1) + 4.0 * k0;
+
+    // cout << "c0: " << c0 << endl;
+    // cout << "c1: " << c1 << endl;
+    // cout << "c2: " << c2 << endl;
 
     c2 /= 3.0;
     c1 *= 2.0;
@@ -447,7 +450,6 @@ Torus::~Torus()
     
 }
 bool Plane::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
-    // Compute the denominator to check if the ray is parallel to the plane
     float denom = glm::dot(normal, ray.direction);
     if (fabs(denom) < 1e-6) { // Parallel case: No intersection
         photon.hit = false;
@@ -463,10 +465,6 @@ bool Plane::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
         return false;
     }
 
-    // Update the photon properties
-    photon.t = t;
-    photon.hitPoint = ray.at(t); // Compute the intersection point
-
     // Check if the intersection point is within the plane's bounds
     glm::vec3 localPoint = photon.hitPoint - center;
     float u_proj = glm::dot(localPoint, u);
@@ -476,15 +474,16 @@ bool Plane::intersect(Ray& ray, glm::vec2 interval, Photon& photon) {
         photon.hit = false;
         return false;
     }
-
+    photon.t = t;
+    photon.hitPoint = ray.at(t);
     photon.normal = normal;
     photon.hit = true;
 
     // Map local coordinates directly to texture space with 90-degree rotation
     // We swap u and v coordinates and invert one of them for 90-degree rotation
     photon.uv = glm::vec2(
-        1.0f - (v_proj + height/2) / height,  // Inverted v coordinate becomes u
-        (u_proj + width/2) / width            // u coordinate becomes v
+        1.0f - (v_proj + height/2) / height,
+        (u_proj + width/2) / width
     );
 
     return true;
